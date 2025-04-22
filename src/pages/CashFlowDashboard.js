@@ -1,0 +1,412 @@
+// src/pages/CashflowDashboard.js
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { FaFilter, FaFileExport, FaCalendarAlt, FaEdit, FaTrash  , FaArrowUp} from 'react-icons/fa';
+import { 
+  getCashflows, 
+  getCashflowsByDateRange, 
+  getDailyCashflow,
+  deleteCashflow 
+} from '../api';
+
+const CashflowDashboard = () => {
+  const [cashflows, setCashflows] = useState([]);
+  const [filteredCashflows, setFilteredCashflows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState({
+    startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0]
+  });
+  const [cashflowType, setCashflowType] = useState('all'); // 'all', 'cash-in', or 'cash-out'
+  const [category, setCategory] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [dailyView, setDailyView] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    // Fetch cashflows for the past month by default
+    fetchCashflowsByDate();
+  }, []);
+  
+  useEffect(() => {
+    // Filter cashflows based on type and category
+    if (cashflows.length) {
+      let filtered = [...cashflows];
+      
+      if (cashflowType === 'cash-in') {
+        filtered = filtered.filter(cf => cf.type === 'cash-in');
+      } else if (cashflowType === 'cash-out') {
+        filtered = filtered.filter(cf => cf.type === 'cash-out');
+      }
+      
+      if (category) {
+        filtered = filtered.filter(cf => cf.category === category);
+      }
+      
+      setFilteredCashflows(filtered);
+    }
+  }, [cashflows, cashflowType, category]);
+  
+
+
+
+// In your fetchCashflowsByDate function
+const fetchCashflowsByDate = async () => {
+  setLoading(true);
+  setError(null);
+  try {
+    const response = await getCashflowsByDateRange(
+      dateRange.startDate, 
+      dateRange.endDate, 
+      cashflowType !== 'all' ? cashflowType : null, 
+      category || null
+    );
+    
+    // Ensure we're setting an array
+    const data = Array.isArray(response.data) ? response.data : [];
+    setCashflows(data);
+    setFilteredCashflows(data);
+    setShowFilters(false);
+    setDailyView(false);
+  } catch (error) {
+    console.error('Error fetching cashflows by date range:', error);
+    setError('Failed to fetch cashflow data. Please try again.');
+    // Initialize with empty arrays to prevent errors
+    setCashflows([]);
+    setFilteredCashflows([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
+const fetchDailyCashflow = async () => {
+  setLoading(true);
+  setError(null);
+  try {
+    const response = await getDailyCashflow(selectedDate);
+    
+    // Extract the entries array from the response
+    const data = response.data && response.data.entries 
+      ? response.data.entries 
+      : [];
+    
+    setCashflows(data);
+    setFilteredCashflows(data);
+  } catch (error) {
+    console.error('Error fetching daily cashflow:', error);
+    setError('Failed to fetch daily cashflow data. Please try again.');
+    // Initialize with empty arrays to prevent errors
+    setCashflows([]);
+    setFilteredCashflows([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  // const handleDeleteCashflow = async (id) => {
+  //   if (window.confirm('Are you sure you want to delete this cashflow entry?')) {
+  //     try {
+  //       await deleteCashflow(id);
+  //       // Refresh the data after deletion
+  //       if (dailyView) {
+  //         fetchDailyCashflow();
+  //       } else {
+  //         fetchCashflowsByDate();
+  //       }
+  //     } catch (error) {
+  //       console.error('Error deleting cashflow entry:', error);
+  //       setError('Failed to delete cashflow entry. Please try again.');
+  //     }
+  //   }
+  // };
+  
+  const handleDateChange = (e) => {
+    const { name, value } = e.target;
+    setDateRange({
+      ...dateRange,
+      [name]: value
+    });
+  };
+  
+  const handleSelectedDateChange = (e) => {
+    setSelectedDate(e.target.value);
+  };
+  
+  const handleCashflowTypeChange = (type) => {
+    setCashflowType(type);
+  };
+  
+  const handleCategoryChange = (e) => {
+    setCategory(e.target.value);
+  };
+  
+  const toggleViewMode = () => {
+    if (dailyView) {
+      fetchCashflowsByDate();
+    } else {
+      setDailyView(true);
+      fetchDailyCashflow();
+    }
+  };
+  
+  const exportCashflowData = () => {
+    // CSV export functionality
+    try {
+      const headers = ['Date', 'Entry Made by', 'Category', 'Type', 'Amount', 'Payment Method', 'Notes'];
+      
+      let csvContent = headers.join(',') + '\n';
+      
+      filteredCashflows.forEach(cf => {
+        const row = [
+          new Date(cf.date).toLocaleDateString(),
+          `"${cf.entryMadeBy ? cf.entryMadeBy.replace(/"/g, '""') : 'N/A'}"`, // Handle quotes in description
+          cf.category || 'N/A',
+          cf.type,
+          cf.amount,
+          cf.paymentMethod || 'N/A',
+          `"${cf.notes ? cf.notes.replace(/"/g, '""') : ''}"`
+        ];
+        
+        csvContent += row.join(',') + '\n';
+      });
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', `cashflow-export-${dailyView ? selectedDate : dateRange.startDate + '-to-' + dateRange.endDate}.csv`);
+      link.style.visibility = 'hidden';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error exporting cashflow data:', error);
+      setError('Failed to export cashflow data. Please try again.');
+    }
+  };
+  
+  // Get categories for dropdown
+  const categories = [...new Set(cashflows.map(cf => cf.category).filter(Boolean))];
+  
+  // Calculate totals for summary
+  const calculateSummary = () => {
+    const cashIn = filteredCashflows
+      .filter(cf => cf.type === 'cash-in')
+      .reduce((sum, cf) => sum + cf.amount, 0);
+      
+    const cashOut = filteredCashflows
+      .filter(cf => cf.type === 'cash-out')
+      .reduce((sum, cf) => sum + cf.amount, 0);
+      
+    return {
+      cashIn,
+      cashOut,
+      balance: cashIn - cashOut
+    };
+  };
+  
+  const summary = calculateSummary();
+  
+  if (loading && !cashflows.length) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>Loading cashflow data...</p>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="cashflow-container">
+      <div className="cashflow-header">
+        <h1>Cashflow Management <span className="urdu-text">/ نقد بہاؤ کا انتظام</span></h1>
+        <div className="cashflow-actions">
+          <button className="btn btn-outline-secondary" onClick={() => setShowFilters(!showFilters)}>
+            <FaFilter /> {showFilters ? 'Hide Filters' : 'Show Filters'}
+          </button>
+          <button className="btn btn-outline-secondary" onClick={toggleViewMode}>
+            <FaCalendarAlt /> {dailyView ? 'Switch to Date Range' : 'Switch to Daily View'}
+          </button>
+          <button className="btn btn-outline-primary" onClick={exportCashflowData}>
+            <FaFileExport /> Export
+          </button>
+          
+          <div className="cashflow-actions cashflow-actions-two">
+                <Link to="/add-cash-in" className="btn btn-success">
+                  <FaArrowUp /> Add Cash Entry
+                </Link>
+                
+              </div>
+        </div>
+      </div>
+      
+      {error && (
+        <div className="alert alert-danger" role="alert">
+          {error}
+        </div>
+      )}
+      
+      {showFilters && (
+        <div className="filter-panel">
+          <h3>Filters <span className="urdu-text">/ فلٹرز</span></h3>
+          <div className="filter-controls">
+            {dailyView ? (
+              <div className="filter-group">
+                <label><FaCalendarAlt /> Select Date <span className="urdu-text">/ تاریخ منتخب کریں</span></label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={handleSelectedDateChange}
+                  className="form-control"
+                />
+              </div>
+            ) : (
+              <div className="filter-group">
+                <label><FaCalendarAlt /> Date Range <span className="urdu-text">/ تاریخ کی حد</span></label>
+                <div className="date-inputs">
+                  <input
+                    type="date"
+                    name="startDate"
+                    value={dateRange.startDate}
+                    onChange={handleDateChange}
+                    className="form-control"
+                  />
+                  <span>to</span>
+                  <input
+                    type="date"
+                    name="endDate"
+                    value={dateRange.endDate}
+                    onChange={handleDateChange}
+                    className="form-control"
+                  />
+                </div>
+              </div>
+            )}
+            
+            <div className="filter-group">
+              <label>Type <span className="urdu-text">/ قسم</span></label>
+              <div className="btn-group">
+                <button
+                  className={`btn ${cashflowType === 'all' ? 'btn-primary' : 'btn-outline-primary'}`}
+                  onClick={() => handleCashflowTypeChange('all')}
+                >
+                  All
+                </button>
+                <button
+                  className={`btn ${cashflowType === 'cash-in' ? 'btn-success' : 'btn-outline-success'}`}
+                  onClick={() => handleCashflowTypeChange('cash-in')}
+                >
+                  Cash In
+                </button>
+                <button
+                  className={`btn ${cashflowType === 'cash-out' ? 'btn-danger' : 'btn-outline-danger'}`}
+                  onClick={() => handleCashflowTypeChange('cash-out')}
+                >
+                  Cash Out
+                </button>
+              </div>
+            </div>
+            
+            <div className="filter-group">
+              <label>Category <span className="urdu-text">/ زمرہ</span></label>
+              <select
+                className="form-control"
+                value={category}
+                onChange={handleCategoryChange}
+              >
+                <option value="">All Categories</option>
+                {categories.map((cat, index) => (
+                  <option key={index} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+            
+            <button 
+              className="btn btn-primary" 
+              onClick={dailyView ? fetchDailyCashflow : fetchCashflowsByDate}
+            >
+              Apply Filters <span className="urdu-text">/ فلٹرز لاگو کریں</span>
+            </button>
+          </div>
+        </div>
+      )}
+      
+      <div className="cashflow-summary">
+        <div className="summary-card cash-in">
+          <h3>Total Cash In: </h3>
+          <h3 className="amount">${summary.cashIn.toLocaleString()}</h3>
+        </div>
+        <div className="summary-card cash-out">
+          <h3>Total Cash Out: </h3>
+          <h3 className="amount">${summary.cashOut.toLocaleString()}</h3>
+        </div>
+        <div className={`summary-card balance ${summary.balance >= 0 ? 'positive' : 'negative'}`}>
+          <h3>Balance: </h3>
+          <h3 className="amount">${summary.balance.toLocaleString()}</h3>
+        </div>
+      </div>
+      
+      <div className="cashflow-table-container">
+        <h3>
+          {dailyView 
+            ? `Cashflow Entries for ${new Date(selectedDate).toLocaleDateString()}`
+            : 'Cashflow Entries'} 
+          <span className="urdu-text">/ نقد بہاؤ اندراجات</span>
+        </h3>
+        <table className="cashflow-table">
+          <thead>
+            <tr>
+              <th>Date <span className="urdu-text">/ تاریخ</span></th>
+              <th>Entry Made by <span className="urdu-text">/ اندراج کرنے والا</span></th>
+              <th>Category <span className="urdu-text">/ زمرہ</span></th>
+              <th>Type <span className="urdu-text">/ قسم</span></th>
+              <th>Amount <span className="urdu-text">/ رقم</span></th>
+              <th>Payment Method</th>
+              <th>Actions <span className="urdu-text">/ کارروائیاں</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan="7" className="text-center">Loading...</td>
+              </tr>
+            ) : filteredCashflows.length === 0 ? (
+              <tr>
+                <td colSpan="7" className="text-center">No cashflow entries found</td>
+              </tr>
+            ) : (
+              filteredCashflows.map((cf) => (
+                <tr key={cf._id} className={cf.type === 'cash-in' ? 'cash-in-row' : 'cash-out-row'}>
+                  <td>{new Date(cf.date).toLocaleDateString()}</td>
+                  <td>{cf.entryMadeBy}</td>
+                  <td>{cf.category || 'N/A'}</td>
+                  <td>{cf.type === 'cash-in' ? 'Cash In' : 'Cash Out'}</td>
+                  <td className={cf.type === 'cash-in' ? 'cash-in-amount' : 'cash-out-amount'}>
+                    ${cf.amount.toLocaleString()}
+                  </td>
+                  <td>{cf.paymentMethod || 'N/A'}</td>
+                  <td className="action-buttons">
+                    <Link to={`/cashflow/edit/${cf._id}`} className="btn btn-sm btn-outline-primary">
+                      <FaEdit /> Edit
+                    </Link>
+                    {/* <button 
+                      className="btn btn-sm btn-outline-danger"
+                      onClick={() => handleDeleteCashflow(cf._id)}
+                    >
+                      <FaTrash /> Delete
+                    </button> */}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+export default CashflowDashboard;
