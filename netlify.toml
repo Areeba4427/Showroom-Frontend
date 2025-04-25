@@ -1,0 +1,11 @@
+[build]
+  # Directory to publish (output of the build command)
+  publish = "build"
+  # Build command
+  command = "npm run build"
+
+# Handle React Router's client-side routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
