@@ -40,7 +40,7 @@ const PasswordProtection = ({ children }) => {
         <form onSubmit={handleSubmit}>
           <div className="input-group">
             <input
-              type="password"
+              type="text" // Changed from "password" to "text" to show characters instead of bullets
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter password"

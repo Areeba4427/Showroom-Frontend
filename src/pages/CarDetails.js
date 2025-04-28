@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { deleteCar, searchCars } from '../api';
+import { deleteCar, searchCars, getCarById } from '../api';
+import CarOwnershipHistory from '../components/car/CarOwnershipHistory';
+
 
 const CarDetails = () => {
   const navigate = useNavigate();
@@ -10,6 +12,7 @@ const CarDetails = () => {
   const [loading, setLoading] = useState(true);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [imageErrors, setImageErrors] = useState({});
+  const [showHistory, setShowHistory] = useState(false);
 
   // Check if we're coming from a search with a specific identifier
   const queryParams = new URLSearchParams(location.search);
@@ -87,6 +90,15 @@ const CarDetails = () => {
             toast.error('Car not found / گاڑی نہیں ملی');
             navigate('/inventory');
           }
+        } else if (location.state && location.state.carId) {
+          // If we have a car ID from location state
+          const response = await getCarById(location.state.carId);
+          if (response.data) {
+            setCar(response.data);
+          } else {
+            toast.error('Car not found / گاڑی نہیں ملی');
+            navigate('/inventory');
+          }
         } else {
           toast.error('No car identifier provided / کوئی گاڑی شناخت کنندہ فراہم نہیں کیا گیا');
           navigate('/inventory');
@@ -101,7 +113,7 @@ const CarDetails = () => {
     };
 
     fetchCarDetails();
-  }, [navigate, searchIdentifier, identifierType]);
+  }, [navigate, searchIdentifier, identifierType, location.state]);
 
 
   // Navigate to the previous image
@@ -127,6 +139,19 @@ const CarDetails = () => {
     setSelectedImageIndex(index);
   };
 
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   if (loading) {
     return <div className="loading">Loading... / لوڈ ہو رہا ہے</div>;
   }
@@ -146,12 +171,73 @@ const CarDetails = () => {
           <Link to={`/edit-car/${car._id}`} className="btn btn-edit">
             Edit / ترمیم کریں
           </Link>
-         
+          
+          {car.ownershipHistory && car.ownershipHistory.length > 0 && (
+            <button 
+              type="button" 
+              className="btn btn-info history-toggle"
+              onClick={() => setShowHistory(!showHistory)}
+            >
+              {showHistory ? 'Hide History / تاریخ چھپائیں' : 'Show History / تاریخ دکھائیں'}
+            </button>
+          )}
+          
           <Link to="/inventory" className="btn btn-back">
             Back / واپس
           </Link>
         </div>
       </div>
+
+      {/* Ownership History Section */}
+      {showHistory && car.ownershipHistory && car.ownershipHistory.length > 0 && (
+        <div className="ownership-history-section">
+          <h2>Ownership History / ملکیت کی تاریخ</h2>
+          <div className="ownership-timeline">
+            {car.ownershipHistory.map((record, index) => (
+              <div key={index} className="history-record">
+                <div className="history-record-header">
+                  <strong>{record.recordType === 'initial' ? 'Initial Record' : record.recordType === 'transfer' ? 'Transfer' : 'Update'}</strong>
+                  <span className="history-date">{formatDate(record.createdAt)}</span>
+                </div>
+                <div className="history-record-details">
+                  <div className="history-detail-group">
+                    <label>Name / نام:</label>
+                    <span>{record.name}</span>
+                  </div>
+                  <div className="history-detail-group">
+                    <label>ID Card / شناختی کارڈ:</label>
+                    <span>{record.idCardNumber}</span>
+                  </div>
+                  <div className="history-detail-group">
+                    <label>Phone / فون:</label>
+                    <span>{record.phoneNumber}</span>
+                  </div>
+                  <div className="history-detail-group">
+                    <label>Address / پتہ:</label>
+                    <span>{record.address}</span>
+                  </div>
+                  <div className="history-detail-group">
+                    <label>Price / قیمت:</label>
+                    <span>{record.price?.toLocaleString()}</span>
+                  </div>
+                  {record.commissionPaid && (
+                    <div className="history-detail-group">
+                      <label>Commission / کمیشن:</label>
+                      <span>{record.commissionPaid?.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {record.notes && (
+                    <div className="history-detail-group">
+                      <label>Notes / نوٹس:</label>
+                      <span>{record.notes}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="details-card">
         <div className="card-header">

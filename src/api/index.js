@@ -8,7 +8,7 @@ const api = axios.create({
 });
 
 // Add cars
-export const addCar = async (formData) => {
+export const addCar = async (formData) => { 
   const config = {
     headers: {
       'Content-Type': 'multipart/form-data'

@@ -33,6 +33,8 @@ const CarForm = () => {
   const [imagesToDelete, setImagesToDelete] = useState([]);
   const [loading, setLoading] = useState(false);
   const [imageErrors, setImageErrors] = useState({});
+  const [ownershipHistory, setOwnershipHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
   
   useEffect(() => {
     if (isEditMode) {
@@ -64,6 +66,11 @@ const CarForm = () => {
             // Set existing images if any
             if (car.images && car.images.length > 0) {
               setExistingImages(car.images);
+            }
+            
+            // Set ownership history if any
+            if (car.ownershipHistory && car.ownershipHistory.length > 0) {
+              setOwnershipHistory(car.ownershipHistory);
             }
           } else {
             toast.error('Car not found / گاڑی نہیں ملی');
@@ -113,7 +120,7 @@ const CarForm = () => {
     setExistingImages(newExistingImages);
   };
   
-  // Function to get image source - similar to the one in CarDetails
+  // Function to get image source
   const getImageSource = (image, index) => {
     if (imageErrors[index]) {
       return '/placeholder-car.png';
@@ -162,11 +169,16 @@ const CarForm = () => {
       }
       
       if (isEditMode) {
-        // No need to handle image deletion separately - it's handled by the backend now
         const response = await updateCar(id, formDataToSubmit);
         
         if (response.status === 200) {
           toast.success('Car updated successfully! / گاڑی کامیابی سے اپ ڈیٹ ہو گئی');
+          
+          // Optionally refresh ownership history after update
+          if (response.data && response.data.ownershipHistory) {
+            setOwnershipHistory(response.data.ownershipHistory);
+          }
+          
           navigate('/inventory');
         } else {
           toast.error('Failed to update car / گاڑی اپڈیٹ کرنے میں ناکامی');
@@ -184,6 +196,17 @@ const CarForm = () => {
     }
   };
   
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+  
   const getFormTitle = () => {
     if (isEditMode) {
       return "Edit Car / گاڑی میں ترمیم کریں";
@@ -198,7 +221,68 @@ const CarForm = () => {
     <div className="car-form-page">
       <div className="page-header">
         <h1>{getFormTitle()}</h1>
+        
+        {isEditMode && ownershipHistory.length > 0 && (
+          <button 
+            type="button" 
+            className="btn btn-info history-toggle"
+            onClick={() => setShowHistory(!showHistory)}
+          >
+            {showHistory ? 'Hide History / تاریخ چھپائیں' : 'Show History / تاریخ دکھائیں'}
+          </button>
+        )}
       </div>
+      
+      {/* Ownership History Section */}
+      {isEditMode && showHistory && ownershipHistory.length > 0 && (
+        <div className="ownership-history-section">
+          <h2>Ownership History / ملکیت کی تاریخ</h2>
+          <div className="ownership-timeline">
+            {ownershipHistory.map((record, index) => (
+              <div key={index} className="history-record">
+                <div className="history-record-header">
+                  <strong>{record.recordType === 'initial' ? 'Initial Record' : 'Update'}</strong>
+                  <span className="history-date">{formatDate(record.recordDate)}</span>
+                </div>
+                <div className="history-record-details">
+                  <div className="history-detail-group">
+                    <label>Name / نام:</label>
+                    <span>{record.name}</span>
+                  </div>
+                  <div className="history-detail-group">
+                    <label>ID Card / شناختی کارڈ:</label>
+                    <span>{record.idCardNumber}</span>
+                  </div>
+                  <div className="history-detail-group">
+                    <label>Phone / فون:</label>
+                    <span>{record.phoneNumber}</span>
+                  </div>
+                  <div className="history-detail-group">
+                    <label>Address / پتہ:</label>
+                    <span>{record.address}</span>
+                  </div>
+                  <div className="history-detail-group">
+                    <label>Price / قیمت:</label>
+                    <span>{record.price?.toLocaleString()}</span>
+                  </div>
+                  {record.commissionPaid && (
+                    <div className="history-detail-group">
+                      <label>Commission / کمیشن:</label>
+                      <span>{record.commissionPaid?.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {record.notes && (
+                    <div className="history-detail-group">
+                      <label>Notes / نوٹس:</label>
+                      <span>{record.notes}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       
       <form onSubmit={handleSubmit} className="car-form" encType="multipart/form-data">
         <div className="form-section">
@@ -206,7 +290,7 @@ const CarForm = () => {
           
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="vehicleEngineNumber">Engine Number / انجن نمبر</label>
+              <label htmlFor="vehicleEngineNumber">Engine Number / انجن نمبر<span className="required-indicator">*</span></label>
               <input
                 type="text"
                 id="vehicleEngineNumber"
@@ -218,7 +302,7 @@ const CarForm = () => {
             </div>
             
             <div className="form-group">
-              <label htmlFor="vehicleRegistrationNumber">Registration Number / رجسٹریشن نمبر</label>
+              <label htmlFor="vehicleRegistrationNumber">Registration Number / رجسٹریشن نمبر<span className="required-indicator">*</span></label>
               <input
                 type="text"
                 id="vehicleRegistrationNumber"
@@ -232,7 +316,7 @@ const CarForm = () => {
           
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="type">Transaction Type / لین دین کی قسم</label>
+              <label htmlFor="type">Transaction Type / لین دین کی قسم<span className="required-indicator">*</span></label>
               <select
                 id="type"
                 name="type"
@@ -247,7 +331,7 @@ const CarForm = () => {
             </div>
             
             <div className="form-group">
-              <label htmlFor="Date">Transaction Date / لین دین کی تاریخ</label>
+              <label htmlFor="Date">Transaction Date / لین دین کی تاریخ<span className="required-indicator">*</span></label>
               <input
                 type="date"
                 id="Date"
@@ -262,10 +346,15 @@ const CarForm = () => {
         
         <div className="form-section">
           <h3>Person Details / شخص کی تفصیلات</h3>
+          {isEditMode && ownershipHistory.length > 0 && (
+            <p className="history-note">
+              <i>Note: Changes to person details will be saved in the car's history / نوٹ: شخص کی تفصیلات میں تبدیلیاں گاڑی کی تاریخ میں محفوظ کی جائیں گی</i>
+            </p>
+          )}
           
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="name">Name / نام</label>
+              <label htmlFor="name">Name / نام<span className="required-indicator">*</span></label>
               <input
                 type="text"
                 id="name"
@@ -277,7 +366,7 @@ const CarForm = () => {
             </div>
             
             <div className="form-group">
-              <label htmlFor="idCardNumber">ID Card Number / شناختی کارڈ نمبر</label>
+              <label htmlFor="idCardNumber">ID Card Number / شناختی کارڈ نمبر<span className="required-indicator">*</span></label>
               <input
                 type="text"
                 id="idCardNumber"
@@ -291,7 +380,7 @@ const CarForm = () => {
           
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="phoneNumber">Phone Number / فون نمبر</label>
+              <label htmlFor="phoneNumber">Phone Number / فون نمبر<span className="required-indicator">*</span></label>
               <input
                 type="text"
                 id="phoneNumber"
@@ -303,7 +392,7 @@ const CarForm = () => {
             </div>
             
             <div className="form-group">
-              <label htmlFor="address">Address / پتہ</label>
+              <label htmlFor="address">Address / پتہ<span className="required-indicator">*</span></label>
               <input
                 type="text"
                 id="address"
@@ -321,7 +410,7 @@ const CarForm = () => {
           
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="price">Price / قیمت</label>
+              <label htmlFor="price">Price / قیمت<span className="required-indicator">*</span></label>
               <input
                 type="number"
                 id="price"
@@ -388,7 +477,7 @@ const CarForm = () => {
             </div>
           )}
           
-          {/* Show existing images for edit mode - FIXED THIS SECTION */}
+          {/* Show existing images for edit mode */}
           {isEditMode && existingImages.length > 0 && (
             <div className="image-preview-container">
               <h4>Existing Images / موجودہ تصاویر</h4>

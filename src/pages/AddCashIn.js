@@ -146,7 +146,7 @@ const AddCashflow = () => {
       <form onSubmit={handleSubmit} className="cashflow-form">
         <div className="form-row">
           <div className="form-group">
-            <label htmlFor="type">Transaction Type / لین دین کی قسم</label>
+            <label htmlFor="type">Transaction Type / لین دین کی قسم<span className="required-indicator">*</span></label>
             <select
               id="type"
               name="type"
@@ -159,7 +159,7 @@ const AddCashflow = () => {
             </select>
           </div>
           <div className="form-group">
-            <label htmlFor="date">Date / تاریخ</label>
+            <label htmlFor="date">Date / تاریخ<span className="required-indicator">*</span></label>
             <input
               type="date"
               id="date"
@@ -173,7 +173,7 @@ const AddCashflow = () => {
         
         <div className="form-row">
           <div className="form-group">
-            <label htmlFor="amount">Amount ($) / رقم</label>
+            <label htmlFor="amount">Amount ($) / رقم<span className="required-indicator">*</span></label>
             <input
               type="number"
               id="amount"
@@ -194,7 +194,6 @@ const AddCashflow = () => {
               name="entryMadeBy"
               value={formData.entryMadeBy}
               onChange={handleInputChange}
-              required
               placeholder="Enter name / نام درج کریں"
             />
           </div>
@@ -202,7 +201,7 @@ const AddCashflow = () => {
         
         <div className="form-row">
           <div className="form-group">
-            <label htmlFor="category">Category / زمرہ</label>
+            <label htmlFor="category">Category / زمرہ <span className="required-indicator">*</span></label>
             <select
               id="category"
               name="category"
@@ -216,7 +215,7 @@ const AddCashflow = () => {
             </select>
           </div>
           <div className="form-group">
-            <label htmlFor="paymentMethod">Payment Method / ادائیگی کا طریقہ</label>
+            <label htmlFor="paymentMethod">Payment Method / ادائیگی کا طریقہ<span className="required-indicator">*</span></label>
             <select
               id="paymentMethod"
               name="paymentMethod"
@@ -235,7 +234,7 @@ const AddCashflow = () => {
         
         <div className="form-row">
         <div className="form-group">
-            <label htmlFor="paymentMethod">Payment Taken Out From / ادائیگی کی گئی</label>
+            <label htmlFor="paymentMethod">Payment Taken Out From / ادائیگی کی گئی <span className="required-indicator">*</span></label>
             <select
               id="paymentFrom"
               name="paymentFrom"

@@ -1,7 +1,7 @@
 // src/pages/CashflowDashboard.js
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FaFilter, FaFileExport, FaCalendarAlt, FaEdit, FaTrash  , FaArrowUp} from 'react-icons/fa';
+import { FaFilter, FaFileExport, FaCalendarAlt, FaEdit, FaTrash, FaArrowUp } from 'react-icons/fa';
 import { 
   getCashflows, 
   getCashflowsByDateRange, 
@@ -48,79 +48,59 @@ const CashflowDashboard = () => {
     }
   }, [cashflows, cashflowType, category]);
   
+  // In your fetchCashflowsByDate function
+  const fetchCashflowsByDate = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await getCashflowsByDateRange(
+        dateRange.startDate, 
+        dateRange.endDate, 
+        cashflowType !== 'all' ? cashflowType : null, 
+        category || null
+      );
+      
+      // Ensure we're setting an array
+      const data = Array.isArray(response.data) ? response.data : [];
+      setCashflows(data);
+      setFilteredCashflows(data);
+      setShowFilters(false);
+      setDailyView(false);
+    } catch (error) {
+      console.error('Error fetching cashflows by date range:', error);
+      setError('Failed to fetch cashflow data. Please try again.');
+      // Initialize with empty arrays to prevent errors
+      setCashflows([]);
+      setFilteredCashflows([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  const fetchDailyCashflow = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await getDailyCashflow(selectedDate);
+      
+      // Extract the entries array from the response
+      const data = response.data && response.data.entries 
+        ? response.data.entries 
+        : [];
+      
+      setCashflows(data);
+      setFilteredCashflows(data);
+    } catch (error) {
+      console.error('Error fetching daily cashflow:', error);
+      setError('Failed to fetch daily cashflow data. Please try again.');
+      // Initialize with empty arrays to prevent errors
+      setCashflows([]);
+      setFilteredCashflows([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-
-// In your fetchCashflowsByDate function
-const fetchCashflowsByDate = async () => {
-  setLoading(true);
-  setError(null);
-  try {
-    const response = await getCashflowsByDateRange(
-      dateRange.startDate, 
-      dateRange.endDate, 
-      cashflowType !== 'all' ? cashflowType : null, 
-      category || null
-    );
-    
-    // Ensure we're setting an array
-    const data = Array.isArray(response.data) ? response.data : [];
-    setCashflows(data);
-    setFilteredCashflows(data);
-    setShowFilters(false);
-    setDailyView(false);
-  } catch (error) {
-    console.error('Error fetching cashflows by date range:', error);
-    setError('Failed to fetch cashflow data. Please try again.');
-    // Initialize with empty arrays to prevent errors
-    setCashflows([]);
-    setFilteredCashflows([]);
-  } finally {
-    setLoading(false);
-  }
-};
-
-const fetchDailyCashflow = async () => {
-  setLoading(true);
-  setError(null);
-  try {
-    const response = await getDailyCashflow(selectedDate);
-    
-    // Extract the entries array from the response
-    const data = response.data && response.data.entries 
-      ? response.data.entries 
-      : [];
-    
-    setCashflows(data);
-    setFilteredCashflows(data);
-  } catch (error) {
-    console.error('Error fetching daily cashflow:', error);
-    setError('Failed to fetch daily cashflow data. Please try again.');
-    // Initialize with empty arrays to prevent errors
-    setCashflows([]);
-    setFilteredCashflows([]);
-  } finally {
-    setLoading(false);
-  }
-};
-
-  // const handleDeleteCashflow = async (id) => {
-  //   if (window.confirm('Are you sure you want to delete this cashflow entry?')) {
-  //     try {
-  //       await deleteCashflow(id);
-  //       // Refresh the data after deletion
-  //       if (dailyView) {
-  //         fetchDailyCashflow();
-  //       } else {
-  //         fetchCashflowsByDate();
-  //       }
-  //     } catch (error) {
-  //       console.error('Error deleting cashflow entry:', error);
-  //       setError('Failed to delete cashflow entry. Please try again.');
-  //     }
-  //   }
-  // };
-  
   const handleDateChange = (e) => {
     const { name, value } = e.target;
     setDateRange({
@@ -208,7 +188,97 @@ const fetchDailyCashflow = async () => {
     };
   };
   
+  // Calculate breakdown by payment location
+  const calculateLocationBreakdown = () => {
+    const locations = ['meezan', 'habib', 'home'];
+    const locationNames = {
+      'meezan': 'Meezan Bank',
+      'habib': 'Bank Al-Habib',
+      'home': 'Home'
+    };
+    
+    // Initialize result object
+    const breakdown = {
+      cashIn: {},
+      cashOut: {}
+    };
+    
+    // Initialize all locations with zero amounts
+    locations.forEach(location => {
+      breakdown.cashIn[location] = 0;
+      breakdown.cashOut[location] = 0;
+    });
+    
+    // Calculate totals for each location
+    filteredCashflows.forEach(cf => {
+      const location = cf.paymentFrom || 'home'; // Default to 'home' if no location specified
+      const type = cf.type === 'cash-in' ? 'cashIn' : 'cashOut';
+      
+      // Make sure the location exists in our breakdown
+      if (breakdown[type][location] !== undefined) {
+        breakdown[type][location] += cf.amount;
+      }
+    });
+    
+    // Format the data for display
+    return {
+      locations: locations.map(loc => ({
+        id: loc,
+        name: locationNames[loc],
+        cashIn: breakdown.cashIn[loc],
+        cashOut: breakdown.cashOut[loc],
+        balance: breakdown.cashIn[loc] - breakdown.cashOut[loc]
+      })),
+      totals: {
+        cashIn: Object.values(breakdown.cashIn).reduce((sum, amount) => sum + amount, 0),
+        cashOut: Object.values(breakdown.cashOut).reduce((sum, amount) => sum + amount, 0),
+        balance: Object.values(breakdown.cashIn).reduce((sum, amount) => sum + amount, 0) - 
+                 Object.values(breakdown.cashOut).reduce((sum, amount) => sum + amount, 0)
+      }
+    };
+  };
+  
   const summary = calculateSummary();
+  const locationBreakdown = calculateLocationBreakdown();
+  
+  // Location Breakdown Table Component
+  const LocationBreakdownTable = ({ breakdown }) => {
+    return (
+      <div className="location-breakdown">
+        <h3>Payment Location Breakdown <span className="urdu-text">/ ادائیگی مقام کی تفصیل</span></h3>
+        <table className="location-breakdown-table">
+          <thead>
+            <tr>
+              <th>Location <span className="urdu-text">/ جگہ</span></th>
+              <th>Cash In <span className="urdu-text">/ نقد اندر</span></th>
+              <th>Cash Out <span className="urdu-text">/ نقد باہر</span></th>
+              <th>Balance <span className="urdu-text">/ بیلنس</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {breakdown.locations.map(location => (
+              <tr key={location.id}>
+                <td>{location.name}</td>
+                <td className="cash-in-amount">${location.cashIn.toLocaleString()}</td>
+                <td className="cash-out-amount">${location.cashOut.toLocaleString()}</td>
+                <td className={location.balance >= 0 ? 'positive-balance' : 'negative-balance'}>
+                  ${location.balance.toLocaleString()}
+                </td>
+              </tr>
+            ))}
+            <tr className="total-row">
+              <td><strong>Total</strong></td>
+              <td className="cash-in-amount"><strong>${breakdown.totals.cashIn.toLocaleString()}</strong></td>
+              <td className="cash-out-amount"><strong>${breakdown.totals.cashOut.toLocaleString()}</strong></td>
+              <td className={breakdown.totals.balance >= 0 ? 'positive-balance' : 'negative-balance'}>
+                <strong>${breakdown.totals.balance.toLocaleString()}</strong>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    );
+  };
   
   if (loading && !cashflows.length) {
     return (
@@ -235,11 +305,10 @@ const fetchDailyCashflow = async () => {
           </button>
           
           <div className="cashflow-actions cashflow-actions-two">
-                <Link to="/add-cash-in" className="btn btn-success">
-                  <FaArrowUp /> Add Cash Entry
-                </Link>
-                
-              </div>
+            <Link to="/add-cash-in" className="btn btn-success">
+              <FaArrowUp /> Add Cash Entry
+            </Link>
+          </div>
         </div>
       </div>
       
@@ -334,20 +403,9 @@ const fetchDailyCashflow = async () => {
         </div>
       )}
       
-      <div className="cashflow-summary">
-        <div className="summary-card cash-in">
-          <h3>Total Cash In: </h3>
-          <h3 className="amount">${summary.cashIn.toLocaleString()}</h3>
-        </div>
-        <div className="summary-card cash-out">
-          <h3>Total Cash Out: </h3>
-          <h3 className="amount">${summary.cashOut.toLocaleString()}</h3>
-        </div>
-        <div className={`summary-card balance ${summary.balance >= 0 ? 'positive' : 'negative'}`}>
-          <h3>Balance: </h3>
-          <h3 className="amount">${summary.balance.toLocaleString()}</h3>
-        </div>
-      </div>
+      
+      {/* Location Breakdown Section */}
+      <LocationBreakdownTable breakdown={locationBreakdown} />
       
       <div className="cashflow-table-container">
         <h3>
@@ -365,7 +423,7 @@ const fetchDailyCashflow = async () => {
               <th>Type <span className="urdu-text">/ قسم</span></th>
               <th>Amount <span className="urdu-text">/ رقم</span></th>
               <th>Payment Method</th>
-              <th>Actions <span className="urdu-text">/ کارروائیاں</span></th>
+              <th>Payment From</th>
             </tr>
           </thead>
           <tbody>
@@ -388,17 +446,7 @@ const fetchDailyCashflow = async () => {
                     ${cf.amount.toLocaleString()}
                   </td>
                   <td>{cf.paymentMethod || 'N/A'}</td>
-                  <td className="action-buttons">
-                    <Link to={`/cashflow/edit/${cf._id}`} className="btn btn-sm btn-outline-primary">
-                      <FaEdit /> Edit
-                    </Link>
-                    {/* <button 
-                      className="btn btn-sm btn-outline-danger"
-                      onClick={() => handleDeleteCashflow(cf._id)}
-                    >
-                      <FaTrash /> Delete
-                    </button> */}
-                  </td>
+                  <td>{cf.paymentFrom}</td>
                 </tr>
               ))
             )}

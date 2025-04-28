@@ -401,7 +401,7 @@ const CreditSale = () => {
               <h3>Vehicle Information</h3>
               <div className="form-row">
                 <div className="form-group">
-                  <label>Vehicle Type</label>
+                  <label>Vehicle Type<span className="required-indicator">*</span></label>
                   <input
                     type="text"
                     name="vehicleType"
@@ -411,7 +411,7 @@ const CreditSale = () => {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Registration Number</label>
+                  <label>Registration Number<span className="required-indicator">*</span></label>
                   <input
                     type="text"
                     name="vehicleRegistrationNumber"
@@ -427,7 +427,7 @@ const CreditSale = () => {
               <h3>Customer Information</h3>
               <div className="form-row">
                 <div className="form-group">
-                  <label>Customer Name</label>
+                  <label>Customer Name<span className="required-indicator">*</span></label>
                   <input
                     type="text"
                     name="customerName"
@@ -437,7 +437,7 @@ const CreditSale = () => {
                   />
                 </div>
                 <div className="form-group">
-                  <label>ID Card Number</label>
+                  <label>ID Card Number<span className="required-indicator">*</span></label>
                   <input
                     type="text"
                     name="idCardNumber"
@@ -450,7 +450,7 @@ const CreditSale = () => {
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>Phone Number</label>
+                  <label>Phone Number<span className="required-indicator">*</span></label>
                   <input
                     type="text"
                     name="phoneNumber"
@@ -460,7 +460,7 @@ const CreditSale = () => {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Address</label>
+                  <label>Address<span className="required-indicator">*</span></label>
                   <input
                     type="text"
                     name="address"
@@ -476,7 +476,7 @@ const CreditSale = () => {
               <h3>Financial Information</h3>
               <div className="form-row">
                 <div className="form-group">
-                  <label>Selling Price (Rs)</label>
+                  <label>Selling Price (Rs)<span className="required-indicator">*</span></label>
                   <input
                     type="number"
                     name="sellingPrice"
@@ -486,7 +486,7 @@ const CreditSale = () => {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Advance Received (Rs)</label>
+                  <label>Advance Received (Rs)<span className="required-indicator">*</span></label>
                   <input
                     type="number"
                     name="advanceReceived"
@@ -504,7 +504,7 @@ const CreditSale = () => {
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>Sale Date</label>
+                  <label>Sale Date<span className="required-indicator">*</span></label>
                   <input
                     type="date"
                     name="saleDate"
@@ -976,7 +976,7 @@ const CreditSale = () => {
 
                 <form onSubmit={handlePaymentSubmit}>
                   <div className="form-group">
-                    <label>Payment Amount (Rs)</label>
+                    <label>Payment Amount (Rs) <span className="required-indicator">*</span></label>
                     <input
                       type="number"
                       name="amount"
@@ -1003,7 +1003,7 @@ const CreditSale = () => {
                   </div>
 
                   <div className="form-group">
-                    <label>Payment Date</label>
+                    <label>Payment Date <span className="required-indicator">*</span></label>
                     <input
                       type="date"
                       name="date"
