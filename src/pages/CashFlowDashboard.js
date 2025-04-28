@@ -190,11 +190,13 @@ const CashflowDashboard = () => {
   
   // Calculate breakdown by payment location
   const calculateLocationBreakdown = () => {
-    const locations = ['meezan', 'habib', 'home'];
+    const locations = ['Meezan Bank', 'Habib Bank','Punjab Bank' , 'MCB Bank' , 'Home' ];
     const locationNames = {
-      'meezan': 'Meezan Bank',
-      'habib': 'Bank Al-Habib',
-      'home': 'Home'
+      'Meezan Bank': 'Meezan Bank',
+      'Habib Bank': 'Bank Al-Habib',
+      'Punjab Bank':'Punjab Bank',
+      'MCB Bank':'MCB Bank',
+      'Home': 'Home',
     };
     
     // Initialize result object

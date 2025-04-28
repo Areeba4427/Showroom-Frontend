@@ -12,6 +12,7 @@ const AddCashflow = () => {
     category: '',
     description: '',
     paymentMethod: 'cash',
+    paymentFrom: 'meezan', // Add default value for paymentFrom
     relatedTo: '',
     relatedCredit: '',
     notes: '',
@@ -187,7 +188,7 @@ const AddCashflow = () => {
             />
           </div>
           <div className="form-group">
-            <label htmlFor="entryMadeBy">Entry Made By / اندراج کرنے والا</label>
+            <label htmlFor="entryMadeBy">Entry Made By / اندراج کرنے والا<span className="required-indicator">*</span></label>
             <input
               type="text"
               id="entryMadeBy"
@@ -234,7 +235,7 @@ const AddCashflow = () => {
         
         <div className="form-row">
         <div className="form-group">
-            <label htmlFor="paymentMethod">Payment Taken Out From / ادائیگی کی گئی <span className="required-indicator">*</span></label>
+            <label htmlFor="paymentFrom">Payment Taken Out From / ادائیگی کی گئی <span className="required-indicator">*</span></label>
             <select
               id="paymentFrom"
               name="paymentFrom"
@@ -242,9 +243,11 @@ const AddCashflow = () => {
               onChange={handleInputChange}
               required
             >
-              <option value="meezan">Meezan Bank</option>
-              <option value="habib">Bank Al-Habib</option>
-              <option value="home">Home</option>
+              <option value="Meezan Bank">Meezan Bank</option>
+              <option value="Habib Bank">Bank Al-Habib</option>
+              <option value="Punjab Bank">Punjab Bank</option>
+              <option value="MCB Bank">MCB Bank</option>
+              <option value="Home">Home</option>
             </select>
           </div>
 

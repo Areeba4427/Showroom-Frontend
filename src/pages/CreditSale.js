@@ -71,7 +71,7 @@ const CreditSale = () => {
       setCreditSales(response.data);
       setLoading(false);
     } catch (err) {
-      setError('Failed to fetch credit sales');
+      toast.error('Failed to fetch credit sales');
       setLoading(false);
       console.error(err);
     }
@@ -87,7 +87,7 @@ const CreditSale = () => {
       setLoading(false);
       setActiveTab('view');
     } catch (err) {
-      setError('Failed to fetch credit sale details');
+      toast.error('Failed to fetch credit sale details');
       setLoading(false);
       console.error(err);
     }
@@ -163,7 +163,7 @@ const CreditSale = () => {
       fetchCreditSales();
       setLoading(false);
     } catch (err) {
-      setError('Failed to save credit sale: ' + (err.response?.data?.message || err.message));
+      ('Failed to save credit sale: ' + (err.response?.data?.message || err.message));
       setLoading(false);
       console.error(err);
     }
@@ -204,7 +204,7 @@ const CreditSale = () => {
 
       setLoading(false);
     } catch (err) {
-      setError('Failed to add payment: ' + (err.response?.data?.message || err.message));
+      toast.error('Failed to add payment: ' + (err.response?.data?.message || err.message));
       setLoading(false);
       console.error(err);
     }
@@ -227,7 +227,7 @@ const CreditSale = () => {
         fetchCreditSales();
         setLoading(false);
       } catch (err) {
-        setError('Failed to delete credit sale');
+        toast.error('Failed to delete credit sale');
         setLoading(false);
         console.error(err);
       }
@@ -340,7 +340,7 @@ const CreditSale = () => {
       }
       setLoading(false);
     } catch (err) {
-      setError('Search failed');
+      toast.error('Search failed');
       setLoading(false);
       console.error(err);
     }
