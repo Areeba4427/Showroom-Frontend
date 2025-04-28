@@ -44,7 +44,15 @@ const CreditSale = () => {
   const [existingImages, setExistingImages] = useState([]);
   const [imagesToDelete, setImagesToDelete] = useState([]);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-
+// Add this with your other state variables
+const [totals, setTotals] = useState({
+  totalSellingPrice: 0,
+  totalPaid: 0,
+  totalRemaining: 0,
+  totalSales: 0,
+  completedSales: 0,
+  pendingSales: 0
+});
 
   const [images, setImages] = useState([]);
 
@@ -68,7 +76,8 @@ const CreditSale = () => {
         response = await api.get(`/credit-sale/get-all-credit-sales`);
       }
 
-      setCreditSales(response.data);
+      setCreditSales(response?.data);
+      calculateTotals(response?.data);
       setLoading(false);
     } catch (err) {
       toast.error('Failed to fetch credit sales');
@@ -84,6 +93,7 @@ const CreditSale = () => {
       setLoading(true);
       const response = await getCreditSale(id);
       setDetailedSale(response.data);
+      calculateTotals(response?.data);
       setLoading(false);
       setActiveTab('view');
     } catch (err) {
@@ -233,6 +243,40 @@ const CreditSale = () => {
       }
     }
   };
+
+
+  // Function to calculate totals
+const calculateTotals = (sales) => {
+  let totalSellingPrice = 0;
+  let totalPaid = 0;
+  let totalRemaining = 0;
+  let completedSales = 0;
+  let pendingSales = 0;
+
+  sales.forEach(sale => {
+    totalSellingPrice += sale.sellingPrice;
+    
+    const paid = sale.paymentHistory.reduce((sum, payment) => sum + payment.amount, 0);
+    totalPaid += paid;
+    
+    totalRemaining += (sale.sellingPrice - paid);
+    
+    if (sale.status === 'completed') {
+      completedSales++;
+    } else if (sale.status === 'pending') {
+      pendingSales++;
+    }
+  });
+
+  setTotals({
+    totalSellingPrice,
+    totalPaid,
+    totalRemaining,
+    totalSales: sales.length,
+    completedSales,
+    pendingSales
+  });
+};
 
   // Reset form
   const resetForm = () => {
@@ -716,6 +760,58 @@ const CreditSale = () => {
                   })}
                 </tbody>
               </table>
+              
+{creditSales?.length > 0 && (
+  <div className="totals-dashboard">
+    <h3>Credit Sales Summary</h3>
+    <div className="totals-cards">
+      <div className="total-card">
+        <div className="total-title">Total Sales</div>
+        <div className="total-value">{totals.totalSales}</div>
+        <div className="total-subtitle">
+          <span className="completed">{totals.completedSales} Completed</span>
+          <span className="pending">{totals.pendingSales} Pending</span>
+        </div>
+      </div>
+      
+      <div className="total-card">
+        <div className="total-title">Total Value</div>
+        <div className="total-value">Rs {totals.totalSellingPrice.toLocaleString()}</div>
+      </div>
+      
+      <div className="total-card">
+        <div className="total-title">Total Collected</div>
+        <div className="total-value">Rs {totals.totalPaid.toLocaleString()}</div>
+        <div className="total-subtitle">
+          ({((totals.totalPaid / totals.totalSellingPrice) * 100).toFixed(1)}%)
+        </div>
+      </div>
+      
+      <div className="total-card">
+        <div className="total-title">Total Outstanding</div>
+        <div className="total-value">Rs {totals.totalRemaining.toLocaleString()}</div>
+        <div className="total-subtitle">
+          ({((totals.totalRemaining / totals.totalSellingPrice) * 100).toFixed(1)}%)
+        </div>
+      </div>
+    </div>
+    
+    <div className="totals-chart">
+      <div className="progress-bar">
+        <div 
+          className="progress-fill" 
+          style={{width: `${(totals.totalPaid / totals.totalSellingPrice) * 100}%`}}
+        ></div>
+      </div>
+      <div className="progress-labels">
+        <span>0%</span>
+        <span>Collection Progress</span>
+        <span>100%</span>
+      </div>
+    </div>
+  </div>
+)}
+
             </div>
           )}
         </div>
