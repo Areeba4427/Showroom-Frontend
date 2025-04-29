@@ -12,26 +12,63 @@ const Inventory = () => {
   const [searchLoading, setSearchLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('filter'); // Default to filter tab
   const [hasSearched, setHasSearched] = useState(false); // Track if search has been performed
-  
+  const [totals, setTotals] = useState({
+    totalCars: 0,
+    boughtCars: 0,
+    soldCars: 0,
+    totalBoughtValue: 0,
+    totalSoldValue: 0,
+    netValue: 0
+  });
+
+
+  // Add this function to calculate totals
+  const calculateInventoryTotals = (carsData) => {
+    let totalBoughtValue = 0;
+    let totalSoldValue = 0;
+    let boughtCars = 0;
+    let soldCars = 0;
+
+    carsData.forEach(car => {
+      if (car.type === 'bought') {
+        totalBoughtValue += car.price || 0;
+        boughtCars++;
+      } else if (car.type === 'sold') {
+        totalSoldValue += car.price || 0;
+        soldCars++;
+      }
+    });
+
+    setTotals({
+      totalCars: carsData.length,
+      boughtCars,
+      soldCars,
+      totalBoughtValue,
+      totalSoldValue,
+      netValue: totalSoldValue - totalBoughtValue
+    });
+  };
+
   const fetchCars = async () => {
     try {
       setLoading(true);
       const response = await getCars();
       setCars(response.data);
+      calculateInventoryTotals(response.data);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching cars:', error);
       setLoading(false);
     }
   };
-  
+
   useEffect(() => {
     // Only fetch all cars when switching to "all" tab
     if (activeTab === 'all') {
       fetchCars();
     }
   }, [activeTab]);
-  
+
   // Search function that uses the API directly
   const handleSearch = async () => {
     if (!searchTerm.trim()) {
@@ -40,7 +77,7 @@ const Inventory = () => {
       setHasSearched(true);
       return;
     }
-    
+
     try {
       setSearchLoading(true);
       const response = await searchCars(searchTerm);
@@ -53,21 +90,21 @@ const Inventory = () => {
       setSearchLoading(false);
     }
   };
-  
+
   // Handle search when user presses Enter
   const handleSearchKeyPress = (e) => {
     if (e.key === 'Enter') {
       handleSearch();
     }
   };
-  
+
   // Debounce search for typing
   useEffect(() => {
     if (searchTerm) {
       const delayDebounceFn = setTimeout(() => {
         handleSearch();
       }, 500);
-      
+
       return () => clearTimeout(delayDebounceFn);
     }
   }, [searchTerm]);
@@ -95,29 +132,29 @@ const Inventory = () => {
       </div>
     );
   }
-  
+
   return (
     <div className="inventory-container">
       <div className="page-header">
         <h1>Buy and Sell / خرید و فروخت</h1>
       </div>
-      
+
       {/* Tabs similar to CreditSale component */}
       <div className="tabs">
-        <button 
-          className={activeTab === 'filter' ? 'active' : ''} 
+        <button
+          className={activeTab === 'filter' ? 'active' : ''}
           onClick={() => setActiveTab('filter')}
         >
           Filter Inventory / فلٹر انوینٹری
         </button>
-        <button 
-          className={activeTab === 'all' ? 'active' : ''} 
+        <button
+          className={activeTab === 'all' ? 'active' : ''}
           onClick={() => setActiveTab('all')}
         >
           View All Inventory / تمام انوینٹری دیکھیں
         </button>
       </div>
-      
+
       {/* Filter Tab */}
       {activeTab === 'filter' && (
         <div className="dashboard-card">
@@ -134,8 +171,8 @@ const Inventory = () => {
                   onKeyPress={handleSearchKeyPress}
                   className="search-input"
                 />
-                <button 
-                  onClick={handleSearch} 
+                <button
+                  onClick={handleSearch}
                   className="search-button btn btn-primary"
                   disabled={searchLoading}
                 >
@@ -144,12 +181,12 @@ const Inventory = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="results-container">
             <div className="results-header">
               <h3 className="section-title">Cars Found / گاڑیاں ملیں</h3>
             </div>
-            
+
             <div className="car-list">
               {searchLoading ? (
                 <div className="loading">Searching...</div>
@@ -172,18 +209,19 @@ const Inventory = () => {
           </div>
         </div>
       )}
-      
+
       {/* All Inventory Tab - Updated with improved styling */}
       {activeTab === 'all' && (
         <div className="dashboard-card list-container">
           <div className="inventory-header">
             <h3 className="section-title">Complete Inventory / مکمل انوینٹری</h3>
           </div>
-          
+
           <div className="table-responsive">
             <table className="credit-sales-table">
               <thead>
                 <tr>
+                  <th>#</th>
                   <th>Registration Number / رجسٹریشن نمبر</th>
                   <th>Engine Number / انجن نمبر</th>
                   <th>Type / قسم</th>
@@ -197,8 +235,9 @@ const Inventory = () => {
               </thead>
               <tbody>
                 {cars.length > 0 ? (
-                  cars.map(car => (
+                  cars.map((car, index) => (
                     <tr key={car._id}>
+                      <td>{index + 1}</td>
                       <td>
                         <div className="cell-content">
                           <div>{car.vehicleRegistrationNumber}</div>
@@ -221,7 +260,7 @@ const Inventory = () => {
                       </td>
                       <td>
                         <div className="cell-content">
-                          <div>{car.idCardNumber}</div>
+                          <div>{car.idCardNumber ? car.idCardNumber : ""}</div>
                         </div>
                       </td>
                       <td>
@@ -236,24 +275,42 @@ const Inventory = () => {
                         </div>
                       </td>
                       <td>
-                      <div className="card-actions">
-                      <Link 
-                        to={`/car-details?identifier=${car.vehicleRegistrationNumber}&type=registration`} 
-                        className="btn btn-view"
-                      >
-                        View Details / تفصیلات دیکھیں
-                      </Link>
-                    </div>
+                        <div className="card-actions">
+                          <Link
+                            to={`/car-details?identifier=${car.vehicleRegistrationNumber}&type=registration`}
+                            className="btn btn-view"
+                          >
+                            View Details / تفصیلات دیکھیں
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="7" className="no-data">No cars found / کوئی گاڑی نہیں ملی</td>
+                    <td colSpan="10" className="no-data">No cars found / کوئی گاڑی نہیں ملی</td>
                   </tr>
                 )}
               </tbody>
             </table>
+
+            {cars.length > 0 && (
+              <div className="totals-dashboard">
+                <h3>Inventory Summary</h3>
+                <div className="totals-cards">
+                  <div className="total-card">
+                    <div className="total-title">Total Vehicles</div>
+                    <div className="total-value">{totals.totalCars}</div>
+                  </div>
+
+                  <div className="total-card">
+                    <div className="total-title">Bought Value</div>
+                    <div className="total-value">Rs {totals.totalBoughtValue.toLocaleString()}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       )}

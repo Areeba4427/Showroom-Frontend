@@ -341,7 +341,7 @@ const CarDetails = () => {
               </div>
               <div className="detail-item">
                 <span className="label">ID Card Number:</span>
-                <span className="value">{car.idCardNumber}</span>
+                <span className="value">{car.idCardNumber ? car.idCardNumber : ""}</span>
               </div>
               <div className="detail-item">
                 <span className="label">Phone Number:</span>

@@ -90,7 +90,7 @@ const CarOwnershipHistory = ({ ownershipHistory }) => {
                   
                   <div className="detail-group">
                     <span className="detail-label">ID Card / شناختی کارڈ:</span>
-                    <span className="detail-value">{record.idCardNumber}</span>
+                    <span className="detail-value">{record.idCardNumber ? record.idCardNumber : ""}</span>
                   </div>
                   
                   <div className="detail-group">

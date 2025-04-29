@@ -2,11 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaFilter, FaFileExport, FaCalendarAlt, FaEdit, FaTrash, FaArrowUp } from 'react-icons/fa';
-import { 
-  getCashflows, 
-  getCashflowsByDateRange, 
+import {
+  getCashflows,
+  getCashflowsByDateRange,
   getDailyCashflow,
-  deleteCashflow 
+  deleteCashflow
 } from '../api';
 
 const CashflowDashboard = () => {
@@ -23,43 +23,43 @@ const CashflowDashboard = () => {
   const [dailyView, setDailyView] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [error, setError] = useState(null);
-  
+
   useEffect(() => {
     // Fetch cashflows for the past month by default
     fetchCashflowsByDate();
   }, []);
-  
+
   useEffect(() => {
     // Filter cashflows based on type and category
     if (cashflows.length) {
       let filtered = [...cashflows];
-      
+
       if (cashflowType === 'cash-in') {
         filtered = filtered.filter(cf => cf.type === 'cash-in');
       } else if (cashflowType === 'cash-out') {
         filtered = filtered.filter(cf => cf.type === 'cash-out');
       }
-      
+
       if (category) {
         filtered = filtered.filter(cf => cf.category === category);
       }
-      
+
       setFilteredCashflows(filtered);
     }
   }, [cashflows, cashflowType, category]);
-  
+
   // In your fetchCashflowsByDate function
   const fetchCashflowsByDate = async () => {
     setLoading(true);
     setError(null);
     try {
       const response = await getCashflowsByDateRange(
-        dateRange.startDate, 
-        dateRange.endDate, 
-        cashflowType !== 'all' ? cashflowType : null, 
+        dateRange.startDate,
+        dateRange.endDate,
+        cashflowType !== 'all' ? cashflowType : null,
         category || null
       );
-      
+
       // Ensure we're setting an array
       const data = Array.isArray(response.data) ? response.data : [];
       setCashflows(data);
@@ -82,12 +82,12 @@ const CashflowDashboard = () => {
     setError(null);
     try {
       const response = await getDailyCashflow(selectedDate);
-      
+
       // Extract the entries array from the response
-      const data = response.data && response.data.entries 
-        ? response.data.entries 
+      const data = response.data && response.data.entries
+        ? response.data.entries
         : [];
-      
+
       setCashflows(data);
       setFilteredCashflows(data);
     } catch (error) {
@@ -108,19 +108,19 @@ const CashflowDashboard = () => {
       [name]: value
     });
   };
-  
+
   const handleSelectedDateChange = (e) => {
     setSelectedDate(e.target.value);
   };
-  
+
   const handleCashflowTypeChange = (type) => {
     setCashflowType(type);
   };
-  
+
   const handleCategoryChange = (e) => {
     setCategory(e.target.value);
   };
-  
+
   const toggleViewMode = () => {
     if (dailyView) {
       fetchCashflowsByDate();
@@ -129,14 +129,14 @@ const CashflowDashboard = () => {
       fetchDailyCashflow();
     }
   };
-  
+
   const exportCashflowData = () => {
     // CSV export functionality
     try {
       const headers = ['Date', 'Entry Made by', 'Category', 'Type', 'Amount', 'Payment Method', 'Notes'];
-      
+
       let csvContent = headers.join(',') + '\n';
-      
+
       filteredCashflows.forEach(cf => {
         const row = [
           new Date(cf.date).toLocaleDateString(),
@@ -147,18 +147,18 @@ const CashflowDashboard = () => {
           cf.paymentMethod || 'N/A',
           `"${cf.notes ? cf.notes.replace(/"/g, '""') : ''}"`
         ];
-        
+
         csvContent += row.join(',') + '\n';
       });
-      
+
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      
+
       link.setAttribute('href', url);
       link.setAttribute('download', `cashflow-export-${dailyView ? selectedDate : dateRange.startDate + '-to-' + dateRange.endDate}.csv`);
       link.style.visibility = 'hidden';
-      
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -167,61 +167,61 @@ const CashflowDashboard = () => {
       setError('Failed to export cashflow data. Please try again.');
     }
   };
-  
+
   // Get categories for dropdown
   const categories = [...new Set(cashflows.map(cf => cf.category).filter(Boolean))];
-  
+
   // Calculate totals for summary
   const calculateSummary = () => {
     const cashIn = filteredCashflows
       .filter(cf => cf.type === 'cash-in')
       .reduce((sum, cf) => sum + cf.amount, 0);
-      
+
     const cashOut = filteredCashflows
       .filter(cf => cf.type === 'cash-out')
       .reduce((sum, cf) => sum + cf.amount, 0);
-      
+
     return {
       cashIn,
       cashOut,
       balance: cashIn - cashOut
     };
   };
-  
+
   // Calculate breakdown by payment location
   const calculateLocationBreakdown = () => {
-    const locations = ['Meezan Bank', 'Habib Bank','Punjab Bank' , 'MCB Bank' , 'Home' ];
+    const locations = ['Meezan Bank', 'Habib Bank', 'Punjab Bank', 'MCB Bank', 'Home'];
     const locationNames = {
       'Meezan Bank': 'Meezan Bank',
       'Habib Bank': 'Bank Al-Habib',
-      'Punjab Bank':'Punjab Bank',
-      'MCB Bank':'MCB Bank',
+      'Punjab Bank': 'Punjab Bank',
+      'MCB Bank': 'MCB Bank',
       'Home': 'Home',
     };
-    
+
     // Initialize result object
     const breakdown = {
       cashIn: {},
       cashOut: {}
     };
-    
+
     // Initialize all locations with zero amounts
     locations.forEach(location => {
       breakdown.cashIn[location] = 0;
       breakdown.cashOut[location] = 0;
     });
-    
+
     // Calculate totals for each location
     filteredCashflows.forEach(cf => {
       const location = cf.paymentFrom || 'home'; // Default to 'home' if no location specified
       const type = cf.type === 'cash-in' ? 'cashIn' : 'cashOut';
-      
+
       // Make sure the location exists in our breakdown
       if (breakdown[type][location] !== undefined) {
         breakdown[type][location] += cf.amount;
       }
     });
-    
+
     // Format the data for display
     return {
       locations: locations.map(loc => ({
@@ -234,15 +234,15 @@ const CashflowDashboard = () => {
       totals: {
         cashIn: Object.values(breakdown.cashIn).reduce((sum, amount) => sum + amount, 0),
         cashOut: Object.values(breakdown.cashOut).reduce((sum, amount) => sum + amount, 0),
-        balance: Object.values(breakdown.cashIn).reduce((sum, amount) => sum + amount, 0) - 
-                 Object.values(breakdown.cashOut).reduce((sum, amount) => sum + amount, 0)
+        balance: Object.values(breakdown.cashIn).reduce((sum, amount) => sum + amount, 0) -
+          Object.values(breakdown.cashOut).reduce((sum, amount) => sum + amount, 0)
       }
     };
   };
-  
+
   const summary = calculateSummary();
   const locationBreakdown = calculateLocationBreakdown();
-  
+
   // Location Breakdown Table Component
   const LocationBreakdownTable = ({ breakdown }) => {
     return (
@@ -281,7 +281,7 @@ const CashflowDashboard = () => {
       </div>
     );
   };
-  
+
   if (loading && !cashflows.length) {
     return (
       <div className="loading-container">
@@ -290,7 +290,7 @@ const CashflowDashboard = () => {
       </div>
     );
   }
-  
+
   return (
     <div className="cashflow-container">
       <div className="cashflow-header">
@@ -305,7 +305,7 @@ const CashflowDashboard = () => {
           <button className="btn btn-outline-primary" onClick={exportCashflowData}>
             <FaFileExport /> Export
           </button>
-          
+
           <div className="cashflow-actions cashflow-actions-two">
             <Link to="/add-cash-in" className="btn btn-success">
               <FaArrowUp /> Add Cash Entry
@@ -313,13 +313,13 @@ const CashflowDashboard = () => {
           </div>
         </div>
       </div>
-      
+
       {error && (
         <div className="alert alert-danger" role="alert">
           {error}
         </div>
       )}
-      
+
       {showFilters && (
         <div className="filter-panel">
           <h3>Filters <span className="urdu-text">/ فلٹرز</span></h3>
@@ -356,7 +356,7 @@ const CashflowDashboard = () => {
                 </div>
               </div>
             )}
-            
+
             <div className="filter-group">
               <label>Type <span className="urdu-text">/ قسم</span></label>
               <div className="btn-group">
@@ -380,7 +380,7 @@ const CashflowDashboard = () => {
                 </button>
               </div>
             </div>
-            
+
             <div className="filter-group">
               <label>Category <span className="urdu-text">/ زمرہ</span></label>
               <select
@@ -394,9 +394,9 @@ const CashflowDashboard = () => {
                 ))}
               </select>
             </div>
-            
-            <button 
-              className="btn btn-primary" 
+
+            <button
+              className="btn btn-primary"
               onClick={dailyView ? fetchDailyCashflow : fetchCashflowsByDate}
             >
               Apply Filters <span className="urdu-text">/ فلٹرز لاگو کریں</span>
@@ -404,21 +404,22 @@ const CashflowDashboard = () => {
           </div>
         </div>
       )}
-      
-      
+
+
       {/* Location Breakdown Section */}
       <LocationBreakdownTable breakdown={locationBreakdown} />
-      
+
       <div className="cashflow-table-container">
         <h3>
-          {dailyView 
+          {dailyView
             ? `Cashflow Entries for ${new Date(selectedDate).toLocaleDateString()}`
-            : 'Cashflow Entries'} 
+            : 'Cashflow Entries'}
           <span className="urdu-text">/ نقد بہاؤ اندراجات</span>
         </h3>
         <table className="cashflow-table">
           <thead>
             <tr>
+              <th># <span className="urdu-text"></span></th>
               <th>Date <span className="urdu-text">/ تاریخ</span></th>
               <th>Entry Made by <span className="urdu-text">/ اندراج کرنے والا</span></th>
               <th>Category <span className="urdu-text">/ زمرہ</span></th>
@@ -431,15 +432,16 @@ const CashflowDashboard = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="7" className="text-center">Loading...</td>
+                <td colSpan="8" className="text-center">Loading...</td>
               </tr>
             ) : filteredCashflows.length === 0 ? (
               <tr>
-                <td colSpan="7" className="text-center">No cashflow entries found</td>
+                <td colSpan="8" className="text-center">No cashflow entries found</td>
               </tr>
             ) : (
-              filteredCashflows.map((cf) => (
+              filteredCashflows.map((cf, index) => (
                 <tr key={cf._id} className={cf.type === 'cash-in' ? 'cash-in-row' : 'cash-out-row'}>
+                  <td>{index + 1}</td>
                   <td>{new Date(cf.date).toLocaleDateString()}</td>
                   <td>{cf.entryMadeBy}</td>
                   <td>{cf.category || 'N/A'}</td>

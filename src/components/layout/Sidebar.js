@@ -5,7 +5,8 @@ import {
   FaCar,
   FaPlus,
   FaMoneyBillWave,
-  FaChartLine
+  FaChartLine,
+  FaHandHoldingUsd  
 } from 'react-icons/fa';
 import  logo_processed from '../asset/logo_processed.jpg'
 const Sidebar = () => {
@@ -49,6 +50,14 @@ const Sidebar = () => {
           <NavLink to="/credit-sale" className={({ isActive }) => isActive ? 'active' : ''}>
             <FaPlus />
             <span>Credit Sale / کریڈٹ فروخت </span>
+          </NavLink>
+        </li>
+
+
+        <li>
+          <NavLink to="/liability" className={({ isActive }) => isActive ? 'active' : ''}>
+            <FaHandHoldingUsd  />
+            <span>Liability / ذمہ داری </span>
           </NavLink>
         </li>
        

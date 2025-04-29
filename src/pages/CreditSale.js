@@ -93,7 +93,6 @@ const [totals, setTotals] = useState({
       setLoading(true);
       const response = await getCreditSale(id);
       setDetailedSale(response.data);
-      calculateTotals(response?.data);
       setLoading(false);
       setActiveTab('view');
     } catch (err) {
@@ -465,6 +464,18 @@ const calculateTotals = (sales) => {
                   />
                 </div>
               </div>
+              <div>
+              <div className="form-group">
+                  <label>Engine Number<span className="required-indicator">*</span></label>
+                  <input
+                    type="text"
+                    name="vehicleEngineNumber"
+                    value={formData.vehicleEngineNumber}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="form-section">
@@ -481,13 +492,12 @@ const calculateTotals = (sales) => {
                   />
                 </div>
                 <div className="form-group">
-                  <label>ID Card Number<span className="required-indicator">*</span></label>
+                  <label>ID Card Number</label>
                   <input
                     type="text"
                     name="idCardNumber"
                     value={formData.idCardNumber}
                     onChange={handleChange}
-                    required
                   />
                 </div>
               </div>
@@ -696,6 +706,7 @@ const calculateTotals = (sales) => {
               <table className="credit-sales-table">
                 <thead>
                   <tr>
+                    <th>#</th>
                     <th>Vehicle</th>
                     <th>Customer</th>
                     <th>Contact</th>
@@ -708,12 +719,13 @@ const calculateTotals = (sales) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {creditSales.map((sale) => {
+                  {creditSales.map((sale , index) => {
                     const totalPaid = calculateTotalPaid(sale);
                     const remaining = sale.sellingPrice - totalPaid;
 
                     return (
                       <tr key={sale._id} className={`status-${sale.status}`}>
+                        <td>{index + 1}</td>
                         <td>
                           <div className="cell-content">
                             <div>{sale.vehicleType}</div>
@@ -872,6 +884,11 @@ const calculateTotals = (sales) => {
                     </div>
 
                     <div className="detail-info-item">
+                      <span className="info-label">Engine Number</span>
+                      <span className="info-value">{detailedSale.vehicleEngineNumber}</span>
+                    </div>
+
+                    <div className="detail-info-item">
                       <span className="info-label">Sale Date</span>
                       <span className="info-value">{formatDate(detailedSale.saleDate)}</span>
                     </div>
@@ -895,7 +912,7 @@ const calculateTotals = (sales) => {
 
                     <div className="detail-info-item">
                       <span className="info-label">ID Card Number</span>
-                      <span className="info-value">{detailedSale.idCardNumber}</span>
+                      <span className="info-value">{detailedSale.idCardNumber ? detailedSale.idCardNumber : ""}</span>
                     </div>
 
                     <div className="detail-info-item">

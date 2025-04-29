@@ -251,7 +251,7 @@ const CarForm = () => {
                   </div>
                   <div className="history-detail-group">
                     <label>ID Card / شناختی کارڈ:</label>
-                    <span>{record.idCardNumber}</span>
+                    <span>{record.idCardNumber ? record.idCardNumber : ""}</span>
                   </div>
                   <div className="history-detail-group">
                     <label>Phone / فون:</label>
@@ -331,7 +331,20 @@ const CarForm = () => {
             </div>
             
             <div className="form-group">
-              <label htmlFor="Date">Transaction Date / لین دین کی تاریخ<span className="required-indicator">*</span></label>
+              <label htmlFor="Date">Vehicle Type <span className="required-indicator">*</span></label>
+              <input
+                type="text"
+                id="vehicleType"
+                name="vehicleType"
+                value={formData.vehicleType}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+          </div>
+          <div>
+          <div className="form-group">
+              <label htmlFor="Date">Transaction Date <span className="required-indicator">*</span></label>
               <input
                 type="date"
                 id="Date"
@@ -366,14 +379,13 @@ const CarForm = () => {
             </div>
             
             <div className="form-group">
-              <label htmlFor="idCardNumber">ID Card Number / شناختی کارڈ نمبر<span className="required-indicator">*</span></label>
+              <label htmlFor="idCardNumber">ID Card Number / شناختی کارڈ نمبر</label>
               <input
                 type="text"
                 id="idCardNumber"
                 name="idCardNumber"
                 value={formData.idCardNumber}
                 onChange={handleInputChange}
-                required
               />
             </div>
           </div>

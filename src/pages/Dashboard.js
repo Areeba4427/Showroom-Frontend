@@ -233,15 +233,15 @@ const Dashboard = () => {
               <div className="cashflow-summary">
                 <div className="summary-card cash-in">
                   <h3>Total Cash In: </h3>
-                  <h3 className="amount">${todayCashflow.cashIn.toLocaleString()}</h3>
+                  <h3 className="amount">Rs{todayCashflow.cashIn.toLocaleString()}</h3>
                 </div>
                 <div className="summary-card cash-out">
                   <h3>Total Cash Out: </h3>
-                  <h3 className="amount">${todayCashflow.cashOut.toLocaleString()}</h3>
+                  <h3 className="amount">Rs{todayCashflow.cashOut.toLocaleString()}</h3>
                 </div>
                 <div className={`summary-card balance ${todayCashflow.balance >= 0 ? 'positive' : 'negative'}`}>
                   <h3>Balance: </h3>
-                  <h3 className="amount">${todayCashflow.balance.toLocaleString()}</h3>
+                  <h3 className="amount">Rs{todayCashflow.balance.toLocaleString()}</h3>
                 </div>
               </div>
               <div className="cashflow-actions">
