@@ -599,10 +599,10 @@ const calculateTotals = (sales) => {
             </div>
 
             <div className="form-section">
-              <h3>Images / تصاویر</h3>
+              <h3>Images</h3>
 
               <div className="form-group">
-                <label htmlFor="images">Upload Images / تصاویر اپلوڈ کریں (Maximum 5)</label>
+                <label htmlFor="images">Upload Images  (Maximum 5)</label>
                 <input
                   type="file"
                   id="images"
@@ -612,13 +612,12 @@ const calculateTotals = (sales) => {
                   multiple
                   className="file-input"
                 />
-                <p className="help-text">Select up to 5 images of the vehicle / گاڑی کی 5 تک تصاویر منتخب کریں</p>
               </div>
 
               {/* Show selected images preview */}
               {images.length > 0 && (
                 <div className="image-preview-container">
-                  <h4>Selected Images / منتخب تصاویر</h4>
+                  <h4>Selected Images</h4>
                   <div className="image-preview-grid">
                     {images.map((image, index) => (
                       <div key={index} className="image-preview-item">

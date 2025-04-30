@@ -206,7 +206,7 @@ const CarDetails = () => {
                   </div>
                   <div className="history-detail-group">
                     <label>ID Card / شناختی کارڈ:</label>
-                    <span>{record.idCardNumber}</span>
+                    <span>{record.idCardNumber ? record.idCardNumber : "-"}</span>
                   </div>
                   <div className="history-detail-group">
                     <label>Phone / فون:</label>
