@@ -3,6 +3,7 @@ import { FaPlus, FaSearch, FaEdit, FaTrash, FaMoneyBillWave, FaArrowLeft, FaEye 
 import { getCreditSale, addCreditSale, updateCreditSale, getallCreditSales } from '../api';
 import api from '../api'; // Import the api object for direct requests
 import { toast } from 'react-toastify';
+import { Link } from 'react-router-dom';
 
 const CreditSale = () => {
   // State for the form
@@ -18,7 +19,10 @@ const CreditSale = () => {
     saleDate: new Date().toISOString().split('T')[0],
     expectedCompletionDate: '',
     notes: '',
-    paymentMethod: 'cash'
+    paymentMethod: 'cash',
+    installmentMethod: 'onetime',
+    numberOfInstallments: 1,      // Add this
+    installments: [{ date: new Date().toISOString().split('T')[0], amount: '' }]
   });
 
   // State for payment form
@@ -38,21 +42,21 @@ const CreditSale = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [activeTab, setActiveTab] = useState('add');
+  const [showAddForm, setShowAddForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [existingImages, setExistingImages] = useState([]);
   const [imagesToDelete, setImagesToDelete] = useState([]);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-// Add this with your other state variables
-const [totals, setTotals] = useState({
-  totalSellingPrice: 0,
-  totalPaid: 0,
-  totalRemaining: 0,
-  totalSales: 0,
-  completedSales: 0,
-  pendingSales: 0
-});
+  // Add this with your other state variables
+  const [totals, setTotals] = useState({
+    totalSellingPrice: 0,
+    totalPaid: 0,
+    totalRemaining: 0,
+    totalSales: 0,
+    completedSales: 0,
+    pendingSales: 0
+  });
 
   const [images, setImages] = useState([]);
 
@@ -94,7 +98,6 @@ const [totals, setTotals] = useState({
       const response = await getCreditSale(id);
       setDetailedSale(response.data);
       setLoading(false);
-      setActiveTab('view');
     } catch (err) {
       toast.error('Failed to fetch credit sale details');
       setLoading(false);
@@ -118,7 +121,6 @@ const [totals, setTotals] = useState({
     });
   };
 
-
   const removeSelectedImage = (index) => {
     const newImages = [...images];
     newImages.splice(index, 1);
@@ -134,45 +136,78 @@ const [totals, setTotals] = useState({
     setExistingImages(newExistingImages);
   };
 
-
-  // Update your handleSubmit function:
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       setLoading(true);
       // Create FormData object to handle files
       const processedFormData = new FormData();
-
+      
       // Add all form fields to the FormData
       Object.keys(formData).forEach(key => {
-        if (key !== 'images') {
+        if (key !== 'images' && key !== 'installments') {
           processedFormData.append(key, formData[key]);
         }
       });
-
+      
+      // Debug info
+      console.log("installmentMethod:", formData.installmentMethod);
+      console.log("Raw installments:", formData.installments);
+      
+      // Fix: Ensure installments are properly processed even if they're in a different format
+      if (formData.installmentMethod === 'installments') {
+        let installmentsToAdd = [];
+        
+        // Check if installments exist and handle different possible formats
+        if (Array.isArray(formData.installments) && formData.installments.length > 0) {
+          // Filter out any empty or invalid installments
+          installmentsToAdd = formData.installments.filter(
+            inst => inst && inst.date && inst.amount
+          );
+        } else if (typeof formData.installments === 'object' && formData.installments !== null) {
+          // In case installments is an object instead of an array
+          const { date, amount } = formData.installments;
+          if (date && amount) {
+            installmentsToAdd = [{ date, amount }];
+          }
+        }
+        
+        console.log("Processed installments:", installmentsToAdd);
+        
+        // Only append if we have valid installments
+        if (installmentsToAdd.length > 0) {
+          processedFormData.append('installments', JSON.stringify(installmentsToAdd));
+        }
+      }
+      
       // Add each file to the FormData
-      if (images.length > 0) {
+      if (images && images.length > 0) {
         images.forEach(image => {
           processedFormData.append('images', image);
         });
       }
-
-      console.log("Submitting form data:", processedFormData);
-
+      
+      // Log the entries in FormData for debugging
+      console.log("FormData contents:");
+      for (let [key, value] of processedFormData.entries()) {
+        console.log(key, value);
+      }
+      
       let response;
       if (selectedSale) {
-        response = await updateCreditSale(selectedSale._id, processedFormData); // Pass the ID here
+        response = await updateCreditSale(selectedSale._id, processedFormData);
         toast.success('Credit sale updated successfully!');
       } else {
         response = await addCreditSale(processedFormData);
         toast.success('Credit sale added successfully!');
       }
-
+      
       resetForm();
       fetchCreditSales();
       setLoading(false);
+      setShowAddForm(false);
     } catch (err) {
-      ('Failed to save credit sale: ' + (err.response?.data?.message || err.message));
+      toast.error('Failed to save credit sale: ' + (err.response?.data?.message || err.message));
       setLoading(false);
       console.error(err);
     }
@@ -204,7 +239,7 @@ const [totals, setTotals] = useState({
       resetPaymentForm();
 
       // If we're in the detail view, refresh the detailed sale data
-      if (activeTab === 'view' && detailedSale) {
+      if (detailedSale) {
         console.log("id details", detailedSale._id)
         await fetchCreditSaleById(detailedSale._id);
       } else {
@@ -219,6 +254,52 @@ const [totals, setTotals] = useState({
     }
   };
 
+  // Handle change for number of installments
+  const handleChangeInstallments = (e) => {
+    const value = parseInt(e.target.value) || 0; // Ensure it's a valid number
+
+    // Safety check to prevent invalid array length
+    const safeValue = Math.min(Math.max(value, 0), 24); // Limit between 0 and 24 installments
+
+    // Create a new array of installments with the appropriate length
+    const newInstallments = [];
+    for (let i = 0; i < safeValue; i++) {
+      // Preserve existing installment data if available
+      newInstallments[i] = formData.installments[i] || {
+        date: new Date().toISOString().split('T')[0], // Default to today's date
+        amount: Math.round((formData.sellingPrice - formData.advanceReceived) / safeValue) || '' // Default amount
+      };
+    }
+    console.log("new installments", newInstallments, safeValue)
+    setFormData({
+      ...formData,
+      numberOfInstallments: safeValue,
+      installments: newInstallments
+    });
+  };
+
+  // Handle individual installment changes
+  const handleInstallmentChange = (index, field, value) => {
+    const updatedInstallments = [...formData.installments];
+
+    // Ensure the installment object at this index exists
+    if (!updatedInstallments[index]) {
+      updatedInstallments[index] = { date: '', amount: '' };
+    }
+
+    updatedInstallments[index] = {
+      ...updatedInstallments[index],
+      [field]: value
+    };
+
+    console.log("new installments", updatedInstallments)
+
+    setFormData({
+      ...formData,
+      installments: updatedInstallments
+    });
+  };
+
   // Handle delete
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this credit sale?')) {
@@ -228,8 +309,7 @@ const [totals, setTotals] = useState({
         toast.success('Credit sale deleted successfully!');
 
         // If we're in the detail view of the deleted item, go back to the list
-        if (activeTab === 'view' && detailedSale && detailedSale._id === id) {
-          setActiveTab('list');
+        if (detailedSale && detailedSale._id === id) {
           setDetailedSale(null);
         }
 
@@ -243,39 +323,38 @@ const [totals, setTotals] = useState({
     }
   };
 
-
   // Function to calculate totals
-const calculateTotals = (sales) => {
-  let totalSellingPrice = 0;
-  let totalPaid = 0;
-  let totalRemaining = 0;
-  let completedSales = 0;
-  let pendingSales = 0;
+  const calculateTotals = (sales) => {
+    let totalSellingPrice = 0;
+    let totalPaid = 0;
+    let totalRemaining = 0;
+    let completedSales = 0;
+    let pendingSales = 0;
 
-  sales.forEach(sale => {
-    totalSellingPrice += sale.sellingPrice;
-    
-    const paid = sale.paymentHistory.reduce((sum, payment) => sum + payment.amount, 0);
-    totalPaid += paid;
-    
-    totalRemaining += (sale.sellingPrice - paid);
-    
-    if (sale.status === 'completed') {
-      completedSales++;
-    } else if (sale.status === 'pending') {
-      pendingSales++;
-    }
-  });
+    sales.forEach(sale => {
+      totalSellingPrice += sale.sellingPrice;
 
-  setTotals({
-    totalSellingPrice,
-    totalPaid,
-    totalRemaining,
-    totalSales: sales.length,
-    completedSales,
-    pendingSales
-  });
-};
+      const paid = sale.paymentHistory.reduce((sum, payment) => sum + payment.amount, 0);
+      totalPaid += paid;
+
+      totalRemaining += (sale.sellingPrice - paid);
+
+      if (sale.status === 'completed') {
+        completedSales++;
+      } else if (sale.status === 'pending') {
+        pendingSales++;
+      }
+    });
+
+    setTotals({
+      totalSellingPrice,
+      totalPaid,
+      totalRemaining,
+      totalSales: sales.length,
+      completedSales,
+      pendingSales
+    });
+  };
 
   // Reset form
   const resetForm = () => {
@@ -291,9 +370,13 @@ const calculateTotals = (sales) => {
       saleDate: new Date().toISOString().split('T')[0],
       expectedCompletionDate: '',
       notes: '',
-      paymentMethod: 'cash'
+      paymentMethod: 'cash',
+      installmentMethod: 'onetime',
+      numberOfInstallments: 1,
+      installments: [{ date: new Date().toISOString().split('T')[0], amount: '' }]
     });
     setSelectedSale(null);
+    setImages([]);
   };
 
   // Reset payment form
@@ -322,18 +405,20 @@ const calculateTotals = (sales) => {
       saleDate: new Date(sale.saleDate).toISOString().split('T')[0],
       expectedCompletionDate: sale.expectedCompletionDate ? new Date(sale.expectedCompletionDate).toISOString().split('T')[0] : '',
       notes: sale.notes || '',
-      paymentMethod: 'cash'
+      paymentMethod: 'cash',
+      installmentMethod: sale.installments?.length > 0 ? 'installments' : 'onetime',
+      numberOfInstallments: sale.installments?.length || 1,
+      installments: sale.installments || []
     });
-    setActiveTab('add');
+    setExistingImages(sale.images || []);
+    setShowAddForm(true);
   };
-
 
   // Add this function near the beginning of your component
   const getImageSource = (image) => {
     if (image.imageData) {
-        return image.imageData;
-      }
-   
+      return image.imageData;
+    }
 
     // Check if image is a string URL
     if (typeof image === 'string') {
@@ -414,285 +499,381 @@ const calculateTotals = (sales) => {
       {error && <div className="alert alert-danger">{error}<button onClick={() => setError('')}>×</button></div>}
       {success && <div className="alert alert-success">{success}<button onClick={() => toast.success('')}>×</button></div>}
 
-      {/* Tabs */}
-      <div className="tabs">
-        <button
-          className={activeTab === 'add' ? 'active' : ''}
-          onClick={() => setActiveTab('add')}
-        >
-          {selectedSale ? 'Edit Credit Sale' : 'Add New Credit Sale'}
-        </button>
-        <button
-          className={activeTab === 'list' ? 'active' : ''}
-          onClick={() => { fetchCreditSales(); setActiveTab('list'); }}
-        >
-          View All Credit Sales
-        </button>
-        {activeTab === 'view' && (
-          <button className="active">
-            View Credit Sale Details
-          </button>
-        )}
-      </div>
-
-      {/* Add/Edit Credit Sale Form */}
-      {activeTab === 'add' && (
-        <div className="form-container">
-          <h2>{selectedSale ? 'Edit Credit Sale' : 'Add New Credit Sale'}</h2>
-          <form onSubmit={handleSubmit}>
-            <div className="form-section">
-              <h3>Vehicle Information</h3>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Vehicle Type<span className="required-indicator">*</span></label>
-                  <input
-                    type="text"
-                    name="vehicleType"
-                    value={formData.vehicleType}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Registration Number<span className="required-indicator">*</span></label>
-                  <input
-                    type="text"
-                    name="vehicleRegistrationNumber"
-                    value={formData.vehicleRegistrationNumber}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-              <div className="form-group">
-                  <label>Engine Number<span className="required-indicator">*</span></label>
-                  <input
-                    type="text"
-                    name="vehicleEngineNumber"
-                    value={formData.vehicleEngineNumber}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-              </div>
+      {/* Add Credit Sale Form Modal */}
+      {showAddForm && (
+        <div className="modal-overlay">
+          <div className="modal large-modal">
+            <div className="modal-header">
+              <h3>{selectedSale ? 'Edit Credit Sale' : 'Add New Credit Sale'}</h3>
+              <button className="close-btn" onClick={() => { setShowAddForm(false); resetForm(); }}>×</button>
             </div>
+            <div className="modal-body">
+              <form onSubmit={handleSubmit}>
+                <div className="form-section">
+                  <h3>Vehicle Information</h3>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Vehicle Type<span className="required-indicator">*</span></label>
+                      <input
+                        type="text"
+                        name="vehicleType"
+                        value={formData.vehicleType}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Registration Number<span className="required-indicator">*</span></label>
+                      <input
+                        type="text"
+                        name="vehicleRegistrationNumber"
+                        value={formData.vehicleRegistrationNumber}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="form-group">
+                      <label>Engine Number<span className="required-indicator">*</span></label>
+                      <input
+                        type="text"
+                        name="vehicleEngineNumber"
+                        value={formData.vehicleEngineNumber}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
 
-            <div className="form-section">
-              <h3>Customer Information</h3>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Customer Name<span className="required-indicator">*</span></label>
-                  <input
-                    type="text"
-                    name="customerName"
-                    value={formData.customerName}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>ID Card Number</label>
-                  <input
-                    type="text"
-                    name="idCardNumber"
-                    value={formData.idCardNumber}
-                    onChange={handleChange}
-                  />
-                </div>
-              </div>
+                <div className="form-section">
+                  <h3>Customer Information</h3>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Customer Name<span className="required-indicator">*</span></label>
+                      <input
+                        type="text"
+                        name="customerName"
+                        value={formData.customerName}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>ID Card Number</label>
+                      <input
+                        type="text"
+                        name="idCardNumber"
+                        value={formData.idCardNumber}
+                        onChange={handleChange}
+                      />
+                    </div>
+                  </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Phone Number<span className="required-indicator">*</span></label>
-                  <input
-                    type="text"
-                    name="phoneNumber"
-                    value={formData.phoneNumber}
-                    onChange={handleChange}
-                    required
-                  />
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Phone Number<span className="required-indicator">*</span></label>
+                      <input
+                        type="text"
+                        name="phoneNumber"
+                        value={formData.phoneNumber}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Address<span className="required-indicator">*</span></label>
+                      <input
+                        type="text"
+                        name="address"
+                        value={formData.address}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label>Address<span className="required-indicator">*</span></label>
-                  <input
-                    type="text"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-              </div>
-            </div>
 
-            <div className="form-section">
-              <h3>Financial Information</h3>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Selling Price (Rs)<span className="required-indicator">*</span></label>
-                  <input
-                    type="number"
-                    name="sellingPrice"
-                    value={formData.sellingPrice}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Advance Received (Rs)<span className="required-indicator">*</span></label>
-                  <input
-                    type="number"
-                    name="advanceReceived"
-                    value={formData.advanceReceived}
-                    onChange={handleChange}
-                  />
-                </div>
-              </div>
+                <div className="form-section">
+                  <h3>Financial Information</h3>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Selling Price (Rs)<span className="required-indicator">*</span></label>
+                      <input
+                        type="number"
+                        name="sellingPrice"
+                        value={formData.sellingPrice}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Advance Received (Rs)<span className="required-indicator">*</span></label>
+                      <input
+                        type="number"
+                        name="advanceReceived"
+                        value={formData.advanceReceived}
+                        onChange={handleChange}
+                      />
+                    </div>
+                  </div>
 
-              {formData.sellingPrice && formData.advanceReceived && (
-                <div className="remaining-amount">
-                  Remaining Amount: Rs {parseFloat(formData.sellingPrice) - parseFloat(formData.advanceReceived)}
-                </div>
-              )}
+                  {formData.sellingPrice && formData.advanceReceived && (
+                    <div className="remaining-amount">
+                      Remaining Amount: Rs {parseFloat(formData.sellingPrice) - parseFloat(formData.advanceReceived)}
+                    </div>
+                  )}
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Sale Date<span className="required-indicator">*</span></label>
-                  <input
-                    type="date"
-                    name="saleDate"
-                    value={formData.saleDate}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Expected Completion Date</label>
-                  <input
-                    type="date"
-                    name="expectedCompletionDate"
-                    value={formData.expectedCompletionDate}
-                    onChange={handleChange}
-                  />
-                </div>
-              </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Sale Date<span className="required-indicator">*</span></label>
+                      <input
+                        type="date"
+                        name="saleDate"
+                        value={formData.saleDate}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Expected Completion Date</label>
+                      <input
+                        type="date"
+                        name="expectedCompletionDate"
+                        value={formData.expectedCompletionDate}
+                        onChange={handleChange}
+                      />
+                    </div>
+                  </div>
 
-              {formData.advanceReceived > 0 && (
+                  {formData.advanceReceived > 0 && (
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Payment Method</label>
+                        <select
+                          name="paymentMethod"
+                          value={formData.paymentMethod}
+                          onChange={handleChange}
+                        >
+                          <option value="cash">Cash</option>
+                          <option value="card">Card</option>
+                          <option value="bank-transfer">Bank Transfer</option>
+                          <option value="check">Check</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <div className="form-row">
                   <div className="form-group">
                     <label>Payment Method</label>
                     <select
-                      name="paymentMethod"
-                      value={formData.paymentMethod}
+                      name="installmentMethod"
+                      value={formData.installmentMethod}
                       onChange={handleChange}
                     >
-                      <option value="cash">Cash</option>
-                      <option value="card">Card</option>
-                      <option value="bank-transfer">Bank Transfer</option>
-                      <option value="check">Check</option>
-                      <option value="other">Other</option>
+                      <option value="onetime">One-time Payment</option>
+                      <option value="installments">Multiple Installments</option>
                     </select>
                   </div>
+
+                  {formData.installmentMethod === 'installments' && (
+                    <div className="form-group">
+                      <label>Number of Installments</label>
+                      <input
+                        type="number"
+                        name="numberOfInstallments"
+                        value={formData.numberOfInstallments}
+                        onChange={handleChangeInstallments}
+                        min="1"
+                        max="24"
+                      />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            <div className="form-section">
-              <h3>Images</h3>
-
-              <div className="form-group">
-                <label htmlFor="images">Upload Images  (Maximum 5)</label>
-                <input
-                  type="file"
-                  id="images"
-                  name="images"
-                  onChange={handleImageChange}
-                  accept="image/*"
-                  multiple
-                  className="file-input"
-                />
-              </div>
-
-              {/* Show selected images preview */}
-              {images.length > 0 && (
-                <div className="image-preview-container">
-                  <h4>Selected Images</h4>
-                  <div className="image-preview-grid">
-                    {images.map((image, index) => (
-                      <div key={index} className="image-preview-item">
-                        <img
-                          src={URL.createObjectURL(image)} 
-                          alt={`Selected ${index}`}
-                          className="image-preview"
-                        />
-                         <input
-              type="file"
-              id="images"
-              name="images"
-              onChange={handleImageChange}
-              accept="image/*"
-              multiple
-              className="file-input"
-            />
-                        <button
-                          type="button"
-                          className="remove-image-btn"
-                          onClick={() => removeSelectedImage(index)}
-                        >
-                          Remove / ہٹائیں
-                        </button>
+                {formData.installmentMethod === 'installments' && formData.numberOfInstallments > 0 && (
+                  <div className="installments-section">
+                    <h4>Installment Schedule</h4>
+                    {[...Array(parseInt(formData.numberOfInstallments))].map((_, index) => (
+                      <div key={index} className="form-row">
+                        <div className="form-group">
+                          <label>Installment {index + 1} Date</label>
+                          <input
+                            type="date"
+                            name={`installmentDate-${index}`}
+                            value={formData.installments[index]?.date || ''}
+                            onChange={(e) => handleInstallmentChange(index, 'date', e.target.value)}
+                            required={formData.installmentMethod === 'installments'}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Installment {index + 1} Amount (Rs)</label>
+                          <input
+                            type="number"
+                            name={`installmentAmount-${index}`}
+                            value={formData.installments[index]?.amount || ''}
+                            onChange={(e) => handleInstallmentChange(index, 'amount', e.target.value)}
+                            required={formData.installmentMethod === 'installments'}
+                          />
+                        </div>
                       </div>
                     ))}
+                    <div className="installment-total">
+                      Total Installment Amount: Rs {formData.installments.reduce((sum, inst) => sum + (parseFloat(inst.amount) || 0), 0).toLocaleString()}
+                    </div>
+                  </div>
+                )}
+                <div className="form-section">
+                  <h3>Images</h3>
+
+                  <div className="form-group">
+                    <label htmlFor="images">Upload Images  (Maximum 5)</label>
+                    <input
+                      type="file"
+                      id="images"
+                      name="images"
+                      onChange={handleImageChange}
+                      accept="image/*"
+                      multiple
+                      className="file-input"
+                    />
+                  </div>
+
+                  {/* Show selected images preview */}
+                  {images.length > 0 && (
+                    <div className="image-preview-container">
+                      <h4>Selected Images</h4>
+                      <div className="image-preview-grid">
+                        {images.map((image, index) => (
+                          <div key={index} className="image-preview-item">
+                            <img
+                              src={URL.createObjectURL(image)}
+                              alt={`Selected ${index}`}
+                              className="image-preview"
+                            />
+                            <input
+                              type="file"
+                              id="images"
+                              name="images"
+                              onChange={handleImageChange}
+                              accept="image/*"
+                              multiple
+                              className="file-input"
+                            />
+                            <button
+                              type="button"
+                              className="remove-image-btn"
+                              onClick={() => removeSelectedImage(index)}
+                            >
+                              Remove / ہٹائیں
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Show existing images for edit mode */}
+                  {existingImages.length > 0 && (
+                    <div className="image-preview-container">
+                      <h4>Existing Images</h4>
+                      <div className="image-preview-grid">
+                        {existingImages.map((image, index) => (
+                          <div key={index} className="image-preview-item">
+                            <img
+                              src={getImageSource(image)}
+                              alt={`Existing ${index}`}
+                              className="image-preview"
+                            />
+                            <button
+                              type="button"
+                              className="remove-image-btn"
+                              onClick={() => removeExistingImage(index)}
+                            >
+                              Remove / ہٹائیں
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="form-section">
+                  <h3>Additional Information</h3>
+                  <div className="form-group">
+                    <label>Notes</label>
+                    <textarea
+                      name="notes"
+                      value={formData.notes}
+                      onChange={handleChange}
+                      rows="3"
+                    ></textarea>
                   </div>
                 </div>
-              )}
 
-              {/* Show existing images for edit mode - FIXED THIS SECTION */}
-
+                <div className="form-actions">
+                  <button type="submit" className="btn-primary">
+                    {selectedSale ? 'Update Credit Sale' : 'Add Credit Sale'}
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn-secondary" 
+                    onClick={() => { setShowAddForm(false); resetForm(); }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
             </div>
-
-            <div className="form-section">
-              <h3>Additional Information</h3>
-              <div className="form-group">
-                <label>Notes</label>
-                <textarea
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleChange}
-                  rows="3"
-                ></textarea>
-              </div>
-            </div>
-
-            <div className="form-actions">
-              <button type="submit" className="btn-primary">
-                {selectedSale ? 'Update Credit Sale' : 'Add Credit Sale'}
-              </button>
-              {selectedSale && (
-                <button type="button" className="btn-secondary" onClick={resetForm}>
-                  Cancel Edit
-                </button>
-              )}
-            </div>
-          </form>
+          </div>
         </div>
       )}
 
-      {/* List of Credit Sales */}
-      {activeTab === 'list' && (
-        <div className="list-container">
-          <h2>Credit Sales List</h2>
+      {/* Main Content */}
+      <div className="page-header">
+        <h1>Credit Sales Management</h1>
+        <div className="add-car-button">
+          <button 
+            className="btn btn-success"
+            onClick={() => {
+              setSelectedSale(null);
+              resetForm();
+              setShowAddForm(true);
+            }}
+          >
+            <FaPlus /> Add Credit Sale
+          </button>
+        </div>
+      </div>
 
-          <div className="filter-container">
-            <div className="search-box">
-              <input
-                type="text"
-                placeholder="Search by customer name, reg. number, ID, phone..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <button onClick={handleSearch}><FaSearch /></button>
+      {/* List of Credit Sales */}
+      {!detailedSale ? (
+        <div className="list-container dashboard-card">
+          <div className="inventory-header">
+            <h3 className="section-title">Credit Sales List</h3>
+            
+            <div className="search-section">
+              <div className="search-bar">
+                <input
+                  type="text"
+                  placeholder="Search by customer name, reg. number, ID, phone..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  className="search-input"
+                />
+                <button
+                  onClick={handleSearch}
+                  className="search-button btn btn-primary"
+                  disabled={loading}
+                >
+                  {loading ? 'Searching...' : <><FaSearch /> Search</>}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -713,12 +894,13 @@ const calculateTotals = (sales) => {
                     <th>Selling Price</th>
                     <th>Amount Paid</th>
                     <th>Remaining</th>
+                    <th>Payment Plan</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {creditSales.map((sale , index) => {
+                  {creditSales.map((sale, index) => {
                     const totalPaid = calculateTotalPaid(sale);
                     const remaining = sale.sellingPrice - totalPaid;
 
@@ -753,6 +935,11 @@ const calculateTotals = (sales) => {
                         <td className="amount">Rs {totalPaid.toLocaleString()}</td>
                         <td className="amount remaining">Rs {remaining.toLocaleString()}</td>
                         <td>
+                          {sale.installments?.length > 0 ?
+                            `${sale.installments.length} Installments` :
+                            'One-time Payment'}
+                        </td>
+                        <td>
                           <span className={`status-badge ${sale.status}`}>
                             {sale.status.charAt(0).toUpperCase() + sale.status.slice(1)}
                           </span>
@@ -765,86 +952,96 @@ const calculateTotals = (sales) => {
                           >
                             <FaEye />
                           </button>
+                          {/* <button
+                            className="btn-small btn-edit"
+                            onClick={() => handleEdit(sale)}
+                            title="Edit"
+                          >
+                            <FaEdit />
+                          </button>
+                          <button
+                            className="btn-small btn-delete"
+                            onClick={() => handleDelete(sale._id)}
+                            title="Delete"
+                          >
+                            <FaTrash />
+                          </button> */}
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
-              
-{creditSales?.length > 0 && (
-  <div className="totals-dashboard">
-    <h3>Credit Sales Summary</h3>
-    <div className="totals-cards">
-      <div className="total-card">
-        <div className="total-title">Total Sales</div>
-        <div className="total-value">{totals.totalSales}</div>
-        <div className="total-subtitle">
-          <span className="completed">{totals.completedSales} Completed</span>
-          <span className="pending">{totals.pendingSales} Pending</span>
-        </div>
-      </div>
-      
-      <div className="total-card">
-        <div className="total-title">Total Value</div>
-        <div className="total-value">Rs {totals.totalSellingPrice.toLocaleString()}</div>
-      </div>
-      
-      <div className="total-card">
-        <div className="total-title">Total Collected</div>
-        <div className="total-value">Rs {totals.totalPaid.toLocaleString()}</div>
-        <div className="total-subtitle">
-          ({((totals.totalPaid / totals.totalSellingPrice) * 100).toFixed(1)}%)
-        </div>
-      </div>
-      
-      <div className="total-card">
-        <div className="total-title">Total Outstanding</div>
-        <div className="total-value">Rs {totals.totalRemaining.toLocaleString()}</div>
-        <div className="total-subtitle">
-          ({((totals.totalRemaining / totals.totalSellingPrice) * 100).toFixed(1)}%)
-        </div>
-      </div>
-    </div>
-    
-    <div className="totals-chart">
-      <div className="progress-bar">
-        <div 
-          className="progress-fill" 
-          style={{width: `${(totals.totalPaid / totals.totalSellingPrice) * 100}%`}}
-        ></div>
-      </div>
-      <div className="progress-labels">
-        <span>0%</span>
-        <span>Collection Progress</span>
-        <span>100%</span>
-      </div>
-    </div>
-  </div>
-)}
 
+              {creditSales?.length > 0 && (
+                <div className="totals-dashboard">
+                  <h3>Credit Sales Summary</h3>
+                  <div className="totals-cards">
+                    <div className="total-card">
+                      <div className="total-title">Total Sales</div>
+                      <div className="total-value">{totals.totalSales}</div>
+                      <div className="total-subtitle">
+                        <span className="completed">{totals.completedSales} Completed</span>
+                        <span className="pending">{totals.pendingSales} Pending</span>
+                      </div>
+                    </div>
+
+                    <div className="total-card">
+                      <div className="total-title">Total Value</div>
+                      <div className="total-value">Rs {totals.totalSellingPrice.toLocaleString()}</div>
+                    </div>
+
+                    <div className="total-card">
+                      <div className="total-title">Total Collected</div>
+                      <div className="total-value">Rs {totals.totalPaid.toLocaleString()}</div>
+                      <div className="total-subtitle">
+                        ({((totals.totalPaid / totals.totalSellingPrice) * 100).toFixed(1)}%)
+                      </div>
+                    </div>
+
+                    <div className="total-card">
+                      <div className="total-title">Total Outstanding</div>
+                      <div className="total-value">Rs {totals.totalRemaining.toLocaleString()}</div>
+                      <div className="total-subtitle">
+                        ({((totals.totalRemaining / totals.totalSellingPrice) * 100).toFixed(1)}%)
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="totals-chart">
+                    <div className="progress-bar">
+                      <div
+                        className="progress-fill"
+                        style={{ width: `${(totals.totalPaid / totals.totalSellingPrice) * 100}%` }}
+                      ></div>
+                    </div>
+                    <div className="progress-labels">
+                      <span>0%</span>
+                      <span>Collection Progress</span>
+                      <span>100%</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
-      )}
-
-      {/* Single Credit Sale Detail View */}
-      {activeTab === 'view' && detailedSale && (
-        <div className="detail-container">
+      ) : (
+        <div className="detail-container dashboard-card">
           <div className="detail-header">
             <button
               className="btn-back"
-              onClick={() => { setActiveTab('list'); setDetailedSale(null); }}
+              onClick={() => setDetailedSale(null)}
             >
               <FaArrowLeft /> Back to List
             </button>
             <div className="detail-header-actions">
-              {/* <button
+              <button
                 className="btn-medium btn-edit"
                 onClick={() => handleEdit(detailedSale)}
               >
                 <FaEdit /> Edit
-              </button> */}
+              </button>
               {detailedSale.status !== 'completed' && detailedSale.status !== 'cancelled' && (
                 <button
                   className="btn-medium btn-payment"
@@ -925,7 +1122,6 @@ const calculateTotals = (sales) => {
                     </div>
                   </div>
                 </div>
-
                 <div className="detail-section detail-half">
                   <h3>Financial Summary</h3>
                   <div className="detail-info-card">
@@ -957,6 +1153,44 @@ const calculateTotals = (sales) => {
                   <h3>Notes</h3>
                   <div className="detail-info-card">
                     <p>{detailedSale.notes}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Schedule Section */}
+              {detailedSale?.installments?.length > 0 && (
+                <div className="detail-section">
+                  <h3>Installment Schedule</h3>
+                  <div className="payment-history-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Due Date</th>
+                          <th>Amount</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {detailedSale.installments.map((installment, index) => {
+                          const isPaid = installment.paid || false;
+                          const isOverdue = new Date(installment.date) < new Date() && !isPaid;
+
+                          return (
+                            <tr key={index} className={isPaid ? 'paid' : isOverdue ? 'overdue' : ''}>
+                              <td>{index + 1}</td>
+                              <td>{formatDate(installment.date)}</td>
+                              <td className="amount">Rs {parseFloat(installment.amount).toLocaleString()}</td>
+                              <td>
+                                <span className={`status-badge ${isPaid ? 'completed' : isOverdue ? 'overdue' : 'pending'}`}>
+                                  {isPaid ? 'Paid' : isOverdue ? 'Overdue' : 'Pending'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
@@ -993,75 +1227,75 @@ const calculateTotals = (sales) => {
               </div>
 
               {detailedSale.images && detailedSale.images.length > 0 && (
-  <div className="detail-section">
-    <h3>Images</h3>
-    <div className="car-images-section">
-      <div className="carousel-container">
-        <div className="main-image-container">
-          {detailedSale.images.length > 1 && (
-            <button 
-              className="carousel-arrow carousel-arrow-left" 
-              onClick={() => {
-                setSelectedImageIndex(prev => 
-                  prev === 0 ? detailedSale.images.length - 1 : prev - 1
-                );
-              }}
-              aria-label="Previous image"
-            >
-              &#10094;
-            </button>
-          )}
-          
-          <img 
-            src={getImageSource(detailedSale.images[selectedImageIndex || 0])}
-            alt={`${detailedSale.vehicleRegistrationNumber}`}
-            className="car-main-image"
-            onError={(e) => {e.target.src = '/placeholder-car.png';}}
-          />
-          
-          {detailedSale.images.length > 1 && (
-            <button 
-              className="carousel-arrow carousel-arrow-right" 
-              onClick={() => {
-                setSelectedImageIndex(prev => 
-                  (prev + 1) % detailedSale.images.length
-                );
-              }}
-              aria-label="Next image"
-            >
-              &#10095;
-            </button>
-          )}
-          
-          {detailedSale.images.length > 1 && (
-            <div className="image-counter">
-              {(selectedImageIndex || 0) + 1} / {detailedSale.images.length}
-            </div>
-          )}
-        </div>
-        
-        {detailedSale.images.length > 1 && (
-          <div className="thumbnails-container">
-            {detailedSale.images.map((image, index) => (
-              <div 
-                key={index} 
-                className={`thumbnail-item ${index === (selectedImageIndex || 0) ? 'active' : ''}`}
-                onClick={() => setSelectedImageIndex(index)}
-              >
-                <img 
-                  src={getImageSource(image)} 
-                  alt={`Thumbnail ${index + 1}`}
-                  className="thumbnail-image"
-                  onError={(e) => {e.target.src = '/placeholder-car.png';}}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  </div>
-)}
+                <div className="detail-section">
+                  <h3>Images</h3>
+                  <div className="car-images-section">
+                    <div className="carousel-container">
+                      <div className="main-image-container">
+                        {detailedSale.images.length > 1 && (
+                          <button
+                            className="carousel-arrow carousel-arrow-left"
+                            onClick={() => {
+                              setSelectedImageIndex(prev =>
+                                prev === 0 ? detailedSale.images.length - 1 : prev - 1
+                              );
+                            }}
+                            aria-label="Previous image"
+                          >
+                            &#10094;
+                          </button>
+                        )}
+
+                        <img
+                          src={getImageSource(detailedSale.images[selectedImageIndex || 0])}
+                          alt={`${detailedSale.vehicleRegistrationNumber}`}
+                          className="car-main-image"
+                          onError={(e) => { e.target.src = '/placeholder-car.png'; }}
+                        />
+
+                        {detailedSale.images.length > 1 && (
+                          <button
+                            className="carousel-arrow carousel-arrow-right"
+                            onClick={() => {
+                              setSelectedImageIndex(prev =>
+                                (prev + 1) % detailedSale.images.length
+                              );
+                            }}
+                            aria-label="Next image"
+                          >
+                            &#10095;
+                          </button>
+                        )}
+
+                        {detailedSale.images.length > 1 && (
+                          <div className="image-counter">
+                            {(selectedImageIndex || 0) + 1} / {detailedSale.images.length}
+                          </div>
+                        )}
+                      </div>
+
+                      {detailedSale.images.length > 1 && (
+                        <div className="thumbnails-container">
+                          {detailedSale.images.map((image, index) => (
+                            <div
+                              key={index}
+                              className={`thumbnail-item ${index === (selectedImageIndex || 0) ? 'active' : ''}`}
+                              onClick={() => setSelectedImageIndex(index)}
+                            >
+                              <img
+                                src={getImageSource(image)}
+                                alt={`Thumbnail ${index + 1}`}
+                                className="thumbnail-image"
+                                onError={(e) => { e.target.src = '/placeholder-car.png'; }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1086,6 +1320,24 @@ const calculateTotals = (sales) => {
                   <p><strong>Remaining:</strong> Rs {(selectedSale.sellingPrice - calculateTotalPaid(selectedSale)).toLocaleString()}</p>
                 </div>
 
+                {/* Add to the payment form */}
+                {selectedSale?.installments?.length > 0 && (
+                  <div className="form-group">
+                    <label>Apply To Installment</label>
+                    <select
+                      name="installmentIndex"
+                      value={paymentForm.installmentIndex}
+                      onChange={handlePaymentChange}
+                    >
+                      <option value="">General Payment</option>
+                      {selectedSale.installments.map((inst, index) => (
+                        <option key={index} value={index}>
+                          Installment #{index + 1} - Due {formatDate(inst.date)} - Rs {inst.amount}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <form onSubmit={handlePaymentSubmit}>
                   <div className="form-group">
                     <label>Payment Amount (Rs) <span className="required-indicator">*</span></label>

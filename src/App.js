@@ -13,6 +13,7 @@ import CarForm from './pages/CarForm';
 import AddCashIn from './pages/AddCashIn';
 import CreditSale from './pages/CreditSale';
 import './App.css';
+import Investor from './pages/Investor';
 
 function App() {
   return (
@@ -43,6 +44,7 @@ function App() {
                   <Route path="/cashflow" element={<CashflowDashboard />} />   
                   <Route path="/add-cash-in" element={<AddCashIn />} />
 
+                  <Route path="/liability" element={<Investor />} />
                 </Routes>
               </div>
             </div>

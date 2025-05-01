@@ -146,6 +146,55 @@ export const deleteCreditSale = async (id, formData) => {
 
 
 
+// Investor endpoints
+export const getallInvestors = () => api.get('/investor/get-all-investors')
+export const getInvestor = (id) => api.get(`/investor/get-investor-by-id/${id}`)
+
+export const addInvestor = async (formData) => {
+  try {
+    console.log("form data going======?",formData)
+    const response = await api.post('/investor/add-investor', formData);
+    return response?.data;
+  } catch (error) {
+    console.error('Error adding Invesotr:', error);
+    throw error;
+  }
+};
+export const updateInvestor = async (id, formData) => {
+  try {
+    const response = await api.put(`/investor/add-transaction/${id}`, formData);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating credit sale:', error);
+    throw error;
+  }
+};
+
+export const deleteInvestor = async (id, formData) => {
+  try {
+    const response = await api.delete(`/investor/delete/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting credit sale:', error);
+    throw error;
+  }
+};
+
+export const deleteTransaction = async (investorid , transactionid, formData) => {
+  try {
+    const response = await api.delete(`/investor/delete-transaction/${investorid}/${transactionid}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting credit sale:', error);
+    throw error;
+  }
+};
+
+export const addTransaction = async (id, transactionData) => api.put(`/investor/add-transaction/${id}`, transactionData);
+export const getTransactions = async (id) => api.get(`/investor/get-all-transactions/${id}`);
+
+
+
 // Dashboard endpoints
 export const getDashboardSummary = () => api.get('/dashboard/summary');
 export const getMonthlySales = (year) => api.get(`/dashboard/monthly-sales${year ? `?year=${year}` : ''}`);
