@@ -190,53 +190,60 @@ const CarDetails = () => {
 
       {/* Ownership History Section */}
       {showHistory && car.ownershipHistory && car.ownershipHistory.length > 0 && (
-        <div className="ownership-history-section">
-          <h2>Ownership History / ملکیت کی تاریخ</h2>
-          <div className="ownership-timeline">
-            {car.ownershipHistory.map((record, index) => (
-              <div key={index} className="history-record">
-                <div className="history-record-header">
-                  <strong>{record.recordType === 'initial' ? 'Initial Record' : record.recordType === 'transfer' ? 'Transfer' : 'Update'}</strong>
-                  <span className="history-date">{formatDate(record.createdAt)}</span>
-                </div>
-                <div className="history-record-details">
-                  <div className="history-detail-group">
-                    <label>Name / نام:</label>
-                    <span>{record.name}</span>
-                  </div>
-                  <div className="history-detail-group">
-                    <label>ID Card / شناختی کارڈ:</label>
-                    <span>{record.idCardNumber ? record.idCardNumber : "-"}</span>
-                  </div>
-                  <div className="history-detail-group">
-                    <label>Phone / فون:</label>
-                    <span>{record.phoneNumber}</span>
-                  </div>
-                  <div className="history-detail-group">
-                    <label>Address / پتہ:</label>
-                    <span>{record.address}</span>
-                  </div>
-                  <div className="history-detail-group">
-                    <label>Price / قیمت:</label>
-                    <span>{record.price?.toLocaleString()}</span>
-                  </div>
-                  {record.commissionPaid && (
-                    <div className="history-detail-group">
-                      <label>Commission / کمیشن:</label>
-                      <span>{record.commissionPaid?.toLocaleString()}</span>
-                    </div>
-                  )}
-                  {record.notes && (
-                    <div className="history-detail-group">
-                      <label>Notes / نوٹس:</label>
-                      <span>{record.notes}</span>
-                    </div>
-                  )}
-                </div>
+      <div className="ownership-history-section">
+      <h2>Ownership History</h2>
+      <div className="ownership-timeline">
+        {car.ownershipHistory.map((record, index) => (
+          <div key={index} className="history-record">
+            <div className="history-record-header">
+              <strong>
+                {record.recordType === 'initial'
+                  ? 'Initial Record'
+                  : record.recordType === 'transfer'
+                  ? 'Transfer'
+                  : 'Update'}
+              </strong>
+              <span className="history-date">{formatDate(record.createdAt)}</span>
+            </div>
+            <div className="history-record-details">
+              <div className="history-detail-group">
+                <label>Name:</label>
+                <span>{record.name}</span>
               </div>
-            ))}
+              <div className="history-detail-group">
+                <label>ID Card:</label>
+                <span>{record.idCardNumber ? record.idCardNumber : '-'}</span>
+              </div>
+              <div className="history-detail-group">
+                <label>Phone:</label>
+                <span>{record.phoneNumber}</span>
+              </div>
+              <div className="history-detail-group">
+                <label>Address:</label>
+                <span>{record.address}</span>
+              </div>
+              <div className="history-detail-group">
+                <label>Price:</label>
+                <span>{record.price?.toLocaleString()}</span>
+              </div>
+              {record.commissionPaid && (
+                <div className="history-detail-group">
+                  <label>Commission:</label>
+                  <span>{record.commissionPaid?.toLocaleString()}</span>
+                </div>
+              )}
+              {record.notes && (
+                <div className="history-detail-group">
+                  <label>Notes:</label>
+                  <span>{record.notes}</span>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        ))}
+      </div>
+    </div>
+    
       )}
 
       <div className="details-card">

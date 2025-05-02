@@ -28,8 +28,14 @@ const Inventory = () => {
     let soldCars = 0;
 
     carsData.forEach(car => {
-     
-        totalBoughtValue += car.price || 0;
+      for(let i=0;i<car.ownershipHistory.length;i++){
+        // console.log(car.ownershipHistory.length  , car.ownershipHistory.recordType)
+        if(car.ownershipHistory[i].recordType == 'initial'){
+          // console.log(car.ownershipHistory[i].price)
+          totalBoughtValue += car.ownershipHistory[i].price;
+        }
+        
+      }
         boughtCars++;
      if (car.type === 'sold') {
         totalSoldValue += car.price || 0;
@@ -136,147 +142,148 @@ const Inventory = () => {
       </div>
 
       <div className="dashboard-card list-container">
-        <div className="inventory-header">
-          <h3 className="section-title">Complete Inventory / مکمل انوینٹری</h3>
-          
-          {/* Integrated Search Bar */}
-          <div className="search-section">
-            <div className="search-bar">
-              <input
-                type="text"
-                placeholder="Search by registration number, ID card, name or phone / رجسٹریشن نمبر، آئی ڈی کارڈ، نام یا فون سے تلاش کریں"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={handleSearchKeyPress}
-                className="search-input"
-              />
-              <button
-                onClick={handleSearch}
-                className="search-button btn btn-primary"
-                disabled={searchLoading}
-              >
-                {searchLoading ? 'Searching...' : <><FaSearch /> Search / تلاش</>}
-              </button>
-            </div>
+  <div className="inventory-header">
+    <h3 className="section-title">Complete Inventory</h3>
+
+    {/* Integrated Search Bar */}
+    <div className="search-section">
+      <div className="search-bar">
+        <input
+          type="text"
+          placeholder="Search by registration number, ID card, name or phone"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          onKeyPress={handleSearchKeyPress}
+          className="search-input"
+        />
+        <button
+          onClick={handleSearch}
+          className="search-button btn btn-primary"
+          disabled={searchLoading}
+        >
+          {searchLoading ? 'Searching...' : <><FaSearch /> Search</>}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div className="table-responsive">
+    <table className="credit-sales-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Registration Number</th>
+          <th>Engine Number</th>
+          <th>Type</th>
+          <th>Name</th>
+          <th>ID Card</th>
+          <th>Phone</th>
+          <th>Price</th>
+          <th>Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {searchLoading ? (
+          <tr>
+            <td colSpan="10" className="loading">Searching...</td>
+          </tr>
+        ) : filteredCars.length > 0 ? (
+          filteredCars.map((car, index) => (
+            <tr key={car._id}>
+              <td>{index + 1}</td>
+              <td>
+                <div className="cell-content">
+                  <div>{car?.vehicleRegistrationNumber}</div>
+                </div>
+              </td>
+              <td>
+                <div className="cell-content">
+                  <div>{car?.vehicleEngineNumber}</div>
+                </div>
+              </td>
+              <td>
+                <span className={`status-badge ${car.type}`}>
+                  {car?.type === 'bought' ? 'Bought' : 'Sold'}
+                </span>
+              </td>
+              <td>
+                <div className="cell-content">
+                  <div>{car?.name}</div>
+                </div>
+              </td>
+              <td>
+                <div className="cell-content">
+                  <div>{car?.idCardNumber ? car.idCardNumber : ""}</div>
+                </div>
+              </td>
+              <td>
+                <div className="cell-content">
+                  <div>{car.phoneNumber}</div>
+                </div>
+              </td>
+              <td className="amount">Rs {car?.price?.toLocaleString() || 'N/A'}</td>
+              <td>
+                <div className="cell-content">
+                  <div>{formatDate(car.Date)}</div>
+                </div>
+              </td>
+              <td>
+                <div className="card-actions">
+                  <Link
+                    to={`/car-details?identifier=${car?.vehicleRegistrationNumber}&type=registration`}
+                    className="btn btn-view"
+                  >
+                    View Details
+                  </Link>
+                </div>
+              </td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td colSpan="10" className="no-data">
+              {searchTerm ? "No matching cars found" : "No cars found"}
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+
+    {filteredCars.length > 0 && (
+      <div className="totals-dashboard">
+        <h3>Inventory Summary</h3>
+        <div className="totals-cards">
+          <div className="total-card">
+            <div className="total-title">Total Vehicles</div>
+            <div className="total-value">{totals.totalCars}</div>
+          </div>
+          <div className="total-card">
+            <div className="total-title">Cars Bought</div>
+            <div className="total-value">{totals.boughtCars}</div>
+          </div>
+          <div className="total-card">
+            <div className="total-title">Cars Sold</div>
+            <div className="total-value">{totals.soldCars}</div>
+          </div>
+          <div className="total-card">
+            <div className="total-title">Cars In Inventory</div>
+            <div className="total-value">{totals.carsInInventory}</div>
+          </div>
+          <div className="total-card">
+            <div className="total-title">Bought Value</div>
+            <div className="total-value">Rs {totals.totalBoughtValue.toLocaleString()}</div>
+          </div>
+          <div className="total-card">
+            <div className="total-title">Sold Value</div>
+            <div className="total-value">Rs {totals.totalSoldValue.toLocaleString()}</div>
           </div>
         </div>
-
-        <div className="table-responsive">
-          <table className="credit-sales-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Registration Number / رجسٹریشن نمبر</th>
-                <th>Engine Number / انجن نمبر</th>
-                <th>Type / قسم</th>
-                <th>Name / نام</th>
-                <th>ID Card / شناختی کارڈ</th>
-                <th>Phone / فون</th>
-                <th>Price / قیمت</th>
-                <th>Date / تاریخ</th>
-                <th>Actions / کارروائیاں </th>
-              </tr>
-            </thead>
-            <tbody>
-              {searchLoading ? (
-                <tr>
-                  <td colSpan="10" className="loading">Searching... / تلاش کر رہے ہیں...</td>
-                </tr>
-              ) : filteredCars.length > 0 ? (
-                filteredCars.map((car, index) => (
-                  <tr key={car._id}>
-                    <td>{index + 1}</td>
-                    <td>
-                      <div className="cell-content">
-                        <div>{car?.vehicleRegistrationNumber}</div>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="cell-content">
-                        <div>{car?.vehicleEngineNumber}</div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`status-badge ${car.type}`}>
-                        {car?.type === 'bought' ? 'Bought / خریدی گئی' : 'Sold / فروخت شدہ'}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="cell-content">
-                        <div>{car?.name}</div>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="cell-content">
-                        <div>{car?.idCardNumber ? car.idCardNumber : ""}</div>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="cell-content">
-                        <div>{car.phoneNumber}</div>
-                      </div>
-                    </td>
-                    <td className="amount">Rs {car?.price?.toLocaleString() || 'N/A'}</td>
-                    <td>
-                      <div className="cell-content">
-                        <div>{formatDate(car.Date)}</div>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="card-actions">
-                        <Link
-                          to={`/car-details?identifier=${car?.vehicleRegistrationNumber}&type=registration`}
-                          className="btn btn-view"
-                        >
-                          View Details / تفصیلات دیکھیں
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="10" className="no-data">
-                    {searchTerm ? "No matching cars found / کوئی گاڑی نہیں ملی" : "No cars found / کوئی گاڑی نہیں ملی"}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-
-          {filteredCars.length > 0 && (
-            <div className="totals-dashboard">
-              <h3>Inventory Summary / انوینٹری کا خلاصہ</h3>
-              <div className="totals-cards">
-                <div className="total-card">
-                  <div className="total-title">Total Vehicles / کل گاڑیاں</div>
-                  <div className="total-value">{totals.totalCars}</div>
-                </div>
-                <div className="total-card">
-                  <div className="total-title">Cars Bought / خریدی گئی گاڑیاں</div>
-                  <div className="total-value">{totals.boughtCars}</div>
-                </div>
-                <div className="total-card">
-                  <div className="total-title">Cars Sold / فروخت شدہ گاڑیاں</div>
-                  <div className="total-value">{totals.soldCars}</div>
-                </div>
-                <div className="total-card">
-                  <div className="total-title">Cars In Inventory / انوینٹری میں گاڑیاں</div>
-                  <div className="total-value">{totals.carsInInventory}</div>
-                </div>
-                <div className="total-card">
-                  <div className="total-title">Bought Value / خریداری کی قیمت</div>
-                  <div className="total-value">Rs {totals.totalBoughtValue.toLocaleString()}</div>
-                </div>
-                <div className="total-card">
-                  <div className="total-title">Sold Value / فروخت کی قیمت</div>
-                  <div className="total-value">Rs {totals.totalSoldValue.toLocaleString()}</div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
+    )}
+  </div>
+</div>
+
     </div>
   );
 };
