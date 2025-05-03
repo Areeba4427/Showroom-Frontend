@@ -139,10 +139,10 @@ const Inventory = () => {
   return (
     <div className="inventory-container">
       <div className="page-header">
-        <h1>Buy and Sell / خرید و فروخت</h1>
+        <h1>Buy and Sell</h1>
         <div className="add-car-button">
           <Link to="/car-form?type=bought" className="btn btn-success">
-            <FaPlusCircle /> Add Car <span className="urdu-text">/ گاڑی شامل کریں</span>
+            <FaPlusCircle /> Add Car
           </Link>
         </div>
       </div>

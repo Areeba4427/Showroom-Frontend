@@ -171,7 +171,7 @@ const Dashboard = () => {
   return (
     <div className="dashboard">
       <div className="dashboard-header">
-        <h1>Dashboard <span className="urdu-text">/ مرکزی صفحہ</span></h1>
+        <h1>Dashboard</h1>
       </div>
       
       <div className="summary-cards">

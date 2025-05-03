@@ -294,7 +294,7 @@ const CashflowDashboard = () => {
   return (
     <div className="cashflow-container">
       <div className="cashflow-header">
-        <h1>Cashflow Management <span className="urdu-text">/ نقد بہاؤ کا انتظام</span></h1>
+        <h1>Cashflow Management</h1>
         <div className="cashflow-actions">
           <button className="btn btn-outline-secondary" onClick={() => setShowFilters(!showFilters)}>
             <FaFilter /> {showFilters ? 'Hide Filters' : 'Show Filters'}
