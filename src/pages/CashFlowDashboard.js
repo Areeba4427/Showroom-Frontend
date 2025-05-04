@@ -1,15 +1,17 @@
 // src/pages/CashflowDashboard.js
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FaFilter, FaFileExport, FaCalendarAlt, FaEdit, FaTrash, FaArrowUp } from 'react-icons/fa';
 import {
   getCashflows,
   getCashflowsByDateRange,
   getDailyCashflow,
-  deleteCashflow
+  deleteCashflow,
+  updateCashflow
 } from '../api';
 
 const CashflowDashboard = () => {
+  const navigate = useNavigate();
   const [cashflows, setCashflows] = useState([]);
   const [filteredCashflows, setFilteredCashflows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +25,8 @@ const CashflowDashboard = () => {
   const [dailyView, setDailyView] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [error, setError] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [actionSuccess, setActionSuccess] = useState(null);
 
   useEffect(() => {
     // Fetch cashflows for the past month by default
@@ -130,10 +134,52 @@ const CashflowDashboard = () => {
     }
   };
 
+
+
+  // Handle delete cashflow
+  const handleDeleteClick = (id) => {
+    // Set the ID to confirm deletion
+    setConfirmDelete(id);
+  };
+
+  // Confirm deletion
+  const confirmDeleteCashflow = async () => {
+    if (!confirmDelete) return;
+    
+    setLoading(true);
+    try {
+      await deleteCashflow(confirmDelete);
+      
+      // Remove the deleted cashflow from state
+      const updatedCashflows = cashflows.filter(cf => cf._id !== confirmDelete);
+      setCashflows(updatedCashflows);
+      setFilteredCashflows(updatedCashflows);
+      
+      // Show success message
+      setActionSuccess('Cashflow entry deleted successfully');
+      
+      // Clear the success message after 3 seconds
+      setTimeout(() => {
+        setActionSuccess(null);
+      }, 3000);
+    } catch (error) {
+      console.error('Error deleting cashflow:', error);
+      setError('Failed to delete cashflow entry. Please try again.');
+    } finally {
+      setLoading(false);
+      setConfirmDelete(null); // Clear the confirmation state
+    }
+  };
+
+  // Cancel deletion
+  const cancelDelete = () => {
+    setConfirmDelete(null);
+  };
+
   const exportCashflowData = () => {
     // CSV export functionality
     try {
-      const headers = ['Date', 'Entry Made by', 'Category', 'Type', 'Amount', 'Payment Method', 'Notes'];
+      const headers = ['Date', 'Entry Made by', 'Category', 'Type', 'Amount', 'Payment Method', 'Payment From', 'Notes'];
 
       let csvContent = headers.join(',') + '\n';
 
@@ -145,6 +191,7 @@ const CashflowDashboard = () => {
           cf.type,
           cf.amount,
           cf.paymentMethod || 'N/A',
+          cf.paymentFrom || 'N/A',
           `"${cf.notes ? cf.notes.replace(/"/g, '""') : ''}"`
         ];
 
@@ -213,7 +260,7 @@ const CashflowDashboard = () => {
 
     // Calculate totals for each location
     filteredCashflows.forEach(cf => {
-      const location = cf.paymentFrom || 'home'; // Default to 'home' if no location specified
+      const location = cf.paymentFrom || 'Home'; // Default to 'Home' if no location specified
       const type = cf.type === 'cash-in' ? 'cashIn' : 'cashOut';
 
       // Make sure the location exists in our breakdown
@@ -282,6 +329,24 @@ const CashflowDashboard = () => {
     );
   };
 
+  // Delete confirmation modal
+  const DeleteConfirmationModal = () => {
+    if (!confirmDelete) return null;
+
+    return (
+      <div className="delete-modal-overlay">
+        <div className="delete-modal">
+          <h3>Confirm Delete</h3>
+          <p>Are you sure you want to delete this cashflow entry? This action cannot be undone.</p>
+          <div className="delete-modal-actions">
+            <button className="btn btn-secondary" onClick={cancelDelete}>Cancel</button>
+            <button className="btn btn-danger" onClick={confirmDeleteCashflow}>Delete</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading && !cashflows.length) {
     return (
       <div className="loading-container">
@@ -305,7 +370,6 @@ const CashflowDashboard = () => {
           <button className="btn btn-outline-primary" onClick={exportCashflowData}>
             <FaFileExport /> Export
           </button>
-
           <div className="cashflow-actions cashflow-actions-two">
             <Link to="/add-cash-in" className="btn btn-success">
               <FaArrowUp /> Add Cash Entry
@@ -317,6 +381,12 @@ const CashflowDashboard = () => {
       {error && (
         <div className="alert alert-danger" role="alert">
           {error}
+        </div>
+      )}
+
+      {actionSuccess && (
+        <div className="alert alert-success" role="alert">
+          {actionSuccess}
         </div>
       )}
 
@@ -405,7 +475,6 @@ const CashflowDashboard = () => {
         </div>
       )}
 
-
       {/* Location Breakdown Section */}
       <LocationBreakdownTable breakdown={locationBreakdown} />
 
@@ -427,16 +496,17 @@ const CashflowDashboard = () => {
               <th>Amount <span className="urdu-text">/ رقم</span></th>
               <th>Payment Method</th>
               <th>Payment From</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {loading ? (
+            {loading && cashflows.length > 0 ? (
               <tr>
-                <td colSpan="8" className="text-center">Loading...</td>
+                <td colSpan="9" className="text-center">Loading...</td>
               </tr>
             ) : filteredCashflows.length === 0 ? (
               <tr>
-                <td colSpan="8" className="text-center">No cashflow entries found</td>
+                <td colSpan="9" className="text-center">No cashflow entries found</td>
               </tr>
             ) : (
               filteredCashflows.map((cf, index) => (
@@ -450,13 +520,70 @@ const CashflowDashboard = () => {
                     ${cf.amount.toLocaleString()}
                   </td>
                   <td>{cf.paymentMethod || 'N/A'}</td>
-                  <td>{cf.paymentFrom}</td>
+                  <td>{cf.paymentFrom || 'N/A'}</td>
+                  <td className="action-buttons">
+                    <button 
+                      className="btn btn-sm btn-outline-danger ms-2"
+                      onClick={() => handleDeleteClick(cf._id)}
+                      title="Delete cashflow entry"
+                    >
+                      <FaTrash />
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal />
+
+      {/* CSS for the delete modal */}
+      <style jsx>{`
+        .delete-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background-color: rgba(0, 0, 0, 0.5);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 1000;
+        }
+        
+        .delete-modal {
+          background-color: white;
+          padding: 20px;
+          border-radius: 8px;
+          width: 400px;
+          max-width: 90%;
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .delete-modal h3 {
+          margin-top: 0;
+          color: #dc3545;
+        }
+        
+        .delete-modal-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 10px;
+          margin-top: 20px;
+        }
+        
+        .action-buttons {
+          white-space: nowrap;
+        }
+        
+        .ms-2 {
+          margin-left: 0.5rem;
+        }
+      `}</style>
     </div>
   );
 };
