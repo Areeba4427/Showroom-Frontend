@@ -55,7 +55,7 @@ const CreditSale = () => {
     totalRemaining: 0,
     totalSales: 0,
     completedSales: 0,
-    pendingSales: 0
+    activeSales: 0
   });
 
   const [images, setImages] = useState([]);
@@ -320,7 +320,7 @@ const CreditSale = () => {
     let totalPaid = 0;
     let totalRemaining = 0;
     let completedSales = 0;
-    let pendingSales = 0;
+    let activeSales = 0;
 
     sales.forEach(sale => {
       totalSellingPrice += sale.sellingPrice;
@@ -332,8 +332,9 @@ const CreditSale = () => {
 
       if (sale.status === 'completed') {
         completedSales++;
-      } else if (sale.status === 'pending') {
-        pendingSales++;
+      }
+       else if (sale.status === 'active') {
+        activeSales++;
       }
     });
 
@@ -343,7 +344,7 @@ const CreditSale = () => {
       totalRemaining,
       totalSales: sales.length,
       completedSales,
-      pendingSales
+      activeSales
     });
   };
 
@@ -960,7 +961,7 @@ const CreditSale = () => {
                     <div className="total-value">{totals.totalSales}</div>
                     <div className="total-subtitle">
                       <span className="completed">{totals.completedSales} Completed</span>
-                      <span className="pending">{totals.pendingSales} Pending</span>
+                      <span className="active">{totals.activeSales} Active</span>
                     </div>
                   </div>
 
@@ -1160,8 +1161,8 @@ const CreditSale = () => {
                             <td>{formatDate(installment.date)}</td>
                             <td className="amount">Rs {parseFloat(installment.amount).toLocaleString()}</td>
                             <td>
-                              <span className={`status-badge ${isPaid ? 'completed' : isOverdue ? 'overdue' : 'pending'}`}>
-                                {isPaid ? 'Paid' : isOverdue ? 'Overdue' : 'Pending'}
+                              <span className={`status-badge ${isPaid ? 'completed' : isOverdue ? 'overdue' : 'Active'}`}>
+                                {isPaid ? 'Paid' : isOverdue ? 'Overdue' : 'Active'}
                               </span>
                             </td>
                           </tr>
